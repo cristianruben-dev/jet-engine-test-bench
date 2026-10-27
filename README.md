@@ -1,74 +1,120 @@
-# Jet Engine Test Bench
+# Banco de motores a reacción
 
-Interactive 3D simulation (Three.js) of four jet engines: a high-bypass turbofan, an afterburning turbojet, a ramjet and a scramjet. Moving parts, airflow streaks that are sucked into the inlet, steered around the bodies and mixed in the jet, casing cutaways with stencil-capped section faces, per-part tooltips, station labels projected over the scene and four paint modes (materials, temperature of gas or cooled metal, pressure, velocity) computed from a simplified thermodynamic cycle. Spool dynamics run in real time: start-up with a starter motor, fuel cut and windmilling, a FADEC acceleration limiter that can be switched off to provoke compressor surge, lean flameout at altitude, scramjet unstart and a thrust reverser on the turbofan. Charts: the four engines against Mach, a live T-s diagram, a strip chart of the last minute and the compressor map with its surge line. Synthesised engine sound (WebAudio), crosswind with a ground vortex, and the whole state in the URL hash so a scenario can be shared. The user interface is in Spanish.
+Simulador 3D interactivo de cuatro motores a reacción, hecho con Three.js y sin ningún paso de compilación: un **turbofan de alta derivación**, un **turborreactor con postquemador**, un **estatorreactor (ramjet)** y un **scramjet**. Cada uno tiene sus piezas móviles, su ciclo termodinámico simplificado y su dinámica de ejes en tiempo real, con el aire dibujado como estelas que entran por la toma, rodean las carcasas y se mezclan en el chorro.
 
-## Run
+<p align="center"><img src="docs/img/turbofan-corte.jpg" alt="Turbofan en corte de un cuarto con el flujo de aire" width="100%"></p>
 
-The files must be served over HTTP (ES modules do not load from `file://`):
+**Demo en línea:** _pendiente de publicar en GitHub Pages_.
+
+## Qué puedes hacer
+
+- **Elegir motor** y verlo por dentro con tres cortes de carcasa (completo, un cuarto, media), tapas de sección y una descripción de cada pieza al pasar el ratón, con su temperatura de gas y de metal, presión y velocidad.
+- **Pintarlo** con los materiales reales, o como mapa de temperatura (del gas o del metal refrigerado), de presión o de velocidad, calculados a partir del ciclo.
+- **Mover los mandos**: acelerador, velocidad del aire (hasta M 10 en el scramjet), altitud (atmósfera ISA hasta 32 km), viento cruzado, corte de combustible, limitador FADEC e inversor de empuje.
+- **Provocar transitorios reales**: arranque con arrancador neumático, apagado y molinete, bombeo del compresor al acelerar sin limitador, apagado de llama por mezcla pobre en altura, *unstart* del scramjet y un aterrizaje con el inversor desplegado.
+- **Leer los instrumentos**: régimen, empuje, caudal, consumo, EGT, rendimientos, temperatura por componente, un registro de los últimos 60 s, el mapa del compresor con su línea de bombeo, el diagrama T‑s en vivo y la comparación de los cuatro motores frente al Mach.
+- **Seguir la guía** estación por estación, lanzar escenarios preparados, activar las etiquetas de estación sobre el modelo, escuchar el motor (sonido sintetizado) y compartir cualquier estado copiando la dirección: todo va en el *hash* de la URL.
+
+## Galería
+
+<p align="center">
+<img src="docs/img/turbofan-termica.jpg" alt="Vista térmica del turbofan" width="49%"> <img src="docs/img/turbofan-frontal.jpg" alt="Succión del fan con el avión parado" width="49%">
+</p>
+<p align="center"><sub>Vista térmica (temperatura del metal refrigerado) · Succión del fan a gas a fondo con el avión parado: el aire entra desde todas partes, incluso desde detrás del labio</sub></p>
+
+<p align="center">
+<img src="docs/img/turborreactor-postquemador.jpg" alt="Turborreactor con postquemador" width="49%"> <img src="docs/img/turbofan-inversor.jpg" alt="Inversor de empuje desplegado" width="49%">
+</p>
+<p align="center"><sub>Turborreactor con el postquemador encendido y la tobera de pétalos abierta · Inversor de empuje: el manguito retrocede y el aire del fan sale hacia delante por las cascadas</sub></p>
+
+<p align="center">
+<img src="docs/img/estatorreactor.jpg" alt="Estatorreactor a Mach 3" width="49%"> <img src="docs/img/scramjet.jpg" alt="Scramjet a Mach 7" width="49%">
+</p>
+<p align="center"><sub>Estatorreactor a M 3: choque cónico sobre el cono de entrada · Scramjet a M 7: el aire mantiene su altura hasta cruzar el choque de la proa y arde todavía supersónico</sub></p>
+
+<p align="center">
+<img src="docs/img/turbofan-velocidad.jpg" alt="Vista de velocidad en crucero" width="49%"> <img src="docs/img/estaciones.jpg" alt="Etiquetas de estación" width="49%">
+</p>
+<p align="center"><sub>Vista de velocidad en crucero a M 0,85 y 11 km · Etiquetas de estación con temperatura, presión y velocidad en vivo</sub></p>
+
+<p align="center">
+<img src="docs/img/interfaz.jpg" alt="Interfaz completa" width="49%"> <img src="docs/img/grafica-compresor.png" alt="Mapa del compresor" width="49%">
+</p>
+<p align="center"><sub>La interfaz: escena, barra de vistas y panel de instrumentos · Mapa del compresor durante un acelerón sin limitador: el punto cruza la línea de bombeo</sub></p>
+
+<p align="center">
+<img src="docs/img/grafica-registro.png" alt="Registro de instrumentos" width="49%"> <img src="docs/img/grafica-ciclo.png" alt="Diagrama T-s" width="49%">
+</p>
+<p align="center"><sub>Registro de los últimos 60 s con las marcas de bombeo · Diagrama T‑s del ciclo en vivo</sub></p>
+
+## Cómo ejecutarlo
+
+Los archivos deben servirse por HTTP, porque los módulos ES no cargan desde `file://`:
 
 ```bash
 python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
-then open <http://localhost:8765/>. Three.js and its addons load from jsDelivr.
+y abre <http://localhost:8765/>. Three.js y sus complementos se cargan desde jsDelivr, y las fuentes desde Google Fonts; no hay dependencias que instalar.
 
-The model (atmosphere, cycles, spool dynamics, compressor map) has no DOM dependency and is tested in Node:
+El modelo (atmósfera, ciclos, dinámica de ejes y mapa del compresor) no depende del DOM y se prueba en Node:
 
 ```bash
 node --test
 ```
 
-## Interface
+## Interfaz
 
-Full-bleed 3D scene. Top left: title, engine tabs and the engine description (replaced by the guided-tour card while a tour runs). Bottom centre, floating over the scene: the colour scale of the active view and the view toolbar (paint mode, gas/metal, cutaway, camera presets, station labels, sound, pause). Right: the instrument panel, with a fixed head (throttle, airspeed, altitude, crosswind, start/cut button, FADEC limiter, thrust reverser on the turbofan, status line, warnings and four key instruments per engine) and a tabbed body: Instrumentos, Gráficas (four engines vs Mach, T-s cycle, 60 s strip chart, compressor map), Escenarios, Ajustes. On phones the panel becomes a bottom sheet and the canvas sits above it; the sheet collapses to the status line and the key instruments. Engine, throttle, speed, altitude, crosswind, view, cut, labels, reverser and camera are kept in the URL hash.
+Escena 3D a pantalla completa. Arriba a la izquierda, el título, las pestañas de motor y la descripción (que la tarjeta de la guía sustituye mientras recorres el motor). Abajo en el centro, flotando sobre la escena, la escala de color de la vista activa y la barra de vistas: pintado, gas o metal, corte, cámaras, etiquetas de estación, sonido y pausa. A la derecha, el panel de instrumentos con una cabecera fija (acelerador, velocidad, altitud, viento cruzado, botón de arranque o corte, limitador FADEC, inversor en el turbofan, línea de estado, avisos y cuatro instrumentos clave) y un cuerpo con pestañas: Instrumentos, Gráficas, Escenarios y Ajustes. En el móvil el panel se convierte en una hoja inferior y la escena queda encima.
 
-Keyboard: `Space` pause, `1`–`4` paint modes, `C` cycles the cutaway, `E` station labels, `S` sound, `Esc` closes the tour, `←`/`→` move between tabs.
+Atajos: `Espacio` pausa, `1`–`4` cambian el pintado, `C` alterna el corte, `E` muestra las etiquetas de estación, `S` activa el sonido, `Esc` cierra la guía y `←`/`→` se mueven entre pestañas.
 
-## Layout
+## Estructura
 
 ```
-index.html               Page markup only (no styles, no logic)
-css/styles.css           Stylesheet (tokens, stage overlays, toolbar, panel, charts, tour, phone sheet)
-js/main.js               Entry point and simulation loop (dynamics → cycle → paint → flow)
-js/ui.js                 Tabs, sliders, start/stop, toolbar, legend, panel head and panes, charts, scenarios, tour, tooltip, station labels, URL hash
-js/state.js              Global state, time-scale constants, particle budgets
-js/fallback.js           Warning when the CDN does not respond
-js/core/utils.js         Numeric helpers, formatting and the palette of every view
-js/core/atmosphere.js    ISA atmosphere (0–32 km)
-js/core/scene.js         Renderer, camera, lights, environment, bloom, camera flights
-js/core/cuts.js          Cutaway clipping planes
-js/core/caps.js          Stencil-filled section caps for the cut casings
-js/core/materials.js     Base materials
-js/core/textures.js      Procedural textures: panel seams, dilution holes, cooling dots, hatch
-js/core/geometry.js      Bodies of revolution, shells, instanced blades (with UVs), profiles
-js/core/flame.js         Flame shader (simplex noise) and flame tubes
-js/core/shocks.js        Shock waves and the θ-β-M relation
-js/core/engine.js        Engine class: parts with station keys and cooling, spools, VSVs, streams, caps
-js/core/thermo.js        Thermodynamic cycle of each engine: stations (T, P, V), fuel flow, efficiencies
-js/core/dynamics.js      Spool dynamics, start/stop, FADEC limiter, surge, flameout, unstart
-js/core/flow.js          Air streaks in one instanced draw call: inlet sink, body steering, streams, swirl, jet mixing, view colouring
-js/core/paint.js         Per-part colour by view (glow, temperature, pressure, velocity) and cap colours
-js/core/charts.js        Comparison chart (four engines vs Mach), T-s diagram, 60 s strip chart and the compressor map
-js/core/sound.js         Synthesised engine sound: fan tone, whine, rumble, hiss, afterburner, starter, surge bang
-js/engines/turbofan.js   Turbofan geometry, VSVs, bleed valves, pylon, streams, tour
-js/engines/turbojet.js   Turbojet with variable IGVs, afterburner and petal nozzle
-js/engines/ramjet.js     Ramjet with inlet spike
-js/engines/scramjet.js   Scramjet with ramps, oblique shocks and fins
-js/engines/index.js      Engine catalog (builder, thermo, ranges, copy, scenario presets)
-test/model.test.mjs      Node tests of the atmosphere, the cycles, the spool dynamics and the compressor map
+index.html               Solo marcado (sin estilos ni lógica)
+css/styles.css           Hoja de estilos: variables, superposiciones de la escena, barra, panel, gráficas, guía, hoja móvil
+js/main.js               Punto de entrada y bucle de simulación (dinámica → ciclo → pintado → flujo → registro)
+js/ui.js                 Pestañas, mandos, arranque y corte, barra, escala, panel, gráficas, escenarios, guía, tooltip, etiquetas, hash de la URL
+js/state.js              Estado global, constantes de escala temporal y presupuestos de partículas
+js/fallback.js           Aviso cuando el CDN no responde
+js/core/utils.js         Ayudas numéricas, formato y paletas de cada vista
+js/core/atmosphere.js    Atmósfera ISA (0–32 km)
+js/core/scene.js         Renderer, cámara, luces, entorno, bloom y vuelos de cámara
+js/core/cuts.js          Planos de recorte del corte
+js/core/caps.js          Tapas de sección por stencil de las carcasas cortadas
+js/core/materials.js     Materiales base
+js/core/textures.js      Texturas procedurales: paneles, orificios de dilución, refrigeración, rayado
+js/core/geometry.js      Cuerpos de revolución, carcasas, álabes instanciados (con UV), perfiles
+js/core/flame.js         Shader de llama (ruido simplex) y tubos de llama
+js/core/shocks.js        Ondas de choque y la relación θ-β-M
+js/core/engine.js        Clase Engine: piezas con estación y refrigeración, ejes, estátores variables, corrientes, tapas
+js/core/thermo.js        Ciclo termodinámico de cada motor: estaciones (T, P, V), caudal de combustible, rendimientos
+js/core/dynamics.js      Dinámica de ejes, arranque y parada, limitador FADEC, bombeo, apagado, unstart, inversor, mapa del compresor
+js/core/flow.js          Estelas de aire en una sola llamada instanciada: sumidero de la toma, guiado por los cuerpos, corrientes, giro, mezcla
+js/core/paint.js         Color de cada pieza según la vista (resplandor, temperatura, presión, velocidad) y de las tapas
+js/core/charts.js        Comparación de los cuatro motores frente al Mach, diagrama T‑s, registro de 60 s y mapa del compresor
+js/core/sound.js         Sonido sintetizado: tono del fan, silbido, rumor, siseo, postquemador, arrancador, golpe de bombeo
+js/engines/turbofan.js   Geometría del turbofan, VSV, válvulas de sangrado, pilón, inversor, corrientes, guía
+js/engines/turbojet.js   Turborreactor con IGV variables, postquemador y tobera de pétalos
+js/engines/ramjet.js     Estatorreactor con cono de entrada
+js/engines/scramjet.js   Scramjet con rampas, choques oblicuos y estabilizadores
+js/engines/index.js      Catálogo de motores (constructor, termodinámica, rangos, textos, escenarios)
+test/model.test.mjs      Pruebas en Node de la atmósfera, los ciclos, la dinámica de ejes y el mapa del compresor
+docs/img/                Capturas de este README
 ```
 
-## Model notes
+## Notas del modelo
 
-- Station temperatures are total (stagnation) gas temperatures; the thermal view can show instead the metal temperature of cooled parts, `T_metal = T_gas − cool·(T_gas − T_coolant)` with the coolant at compressor-delivery temperature.
-- Fuel flow comes from the heat added per station (`ΔT = f·LHV·η/cp`); specific fuel consumption, propulsive and thermal efficiency are derived from it.
-- The flow is not a CFD. Outside the engine each particle moves with the free stream plus the sink of the captured stream tube, whose strength is the inlet face velocity minus the flight speed (so a windmilling or throttled-back engine at speed spills, and a surging compressor blows air out of the inlet); near a body its radial velocity follows the slope of the profile, read a little ahead, and behind the nozzle the free jet continues the body so the outside air rides along the shear layer and is dragged by it. Inside, particles follow programmed streams (radius, velocity and temperature per station) with rotor swirl, a slowly wandering drift in the flame and in the free jet, and a through-flow factor `q` that goes to zero with the engine stopped and no wind.
-- Streaks are screen-space quads (constant pixel width, soft edges, round head) drawn with premultiplied alpha; with a cutaway most new particles start in the open sector so the internal flow can be seen. Outside air draws fainter with altitude (density). Behind the spike of the ramjet the air turns inside the conical shock; the scramjet's captured air keeps its height until the nose shock reaches it. Crosswind adds a lateral free stream, and on the ground with a static, sucking inlet a vortex filament rises from the floor into the lower lip. Above about Mach 8 the scramjet temperatures ignore dissociation.
-- The turbofan's thrust reverser is a translating sleeve with cascades and ten blocker doors: the bypass stream is diverted into a reversed stream that leaves forward through the cascades and is released as free air (which the inlet can re-ingest at low speed); the cycle then counts the bypass momentum forward, so the thrust goes negative.
-- The compressor map is schematic: the operating line is the steady schedule, the surge line sits 10–22 % above it, and the live point rises with the fuel excess over the steady schedule (the same quantity the FADEC limiter caps), so a throttle slam without the limiter crosses the surge line exactly when the dynamics trigger the surge.
-- The sound is synthesised: a sawtooth at half the fan's blade-pass frequency, a sine whine from the core spool, low-passed noise for combustion and the jet, a band-passed roar for the afterburner, a triangle sweep for the starter and a noise burst for a surge or an unstart.
-- Quality drops one particle level by itself when a frame costs more than 22 ms of CPU for three seconds.
+- Las temperaturas de estación son temperaturas totales del gas; la vista térmica puede mostrar en su lugar la del metal de las piezas refrigeradas, `T_metal = T_gas − cool·(T_gas − T_refrigerante)`, con el refrigerante a la temperatura de salida del compresor.
+- El caudal de combustible sale del calor añadido en cada estación (`ΔT = f·PCI·η/cp`); de él se derivan el consumo específico y los rendimientos propulsivo y térmico.
+- El flujo no es un CFD. Fuera del motor cada partícula lleva la corriente libre más el sumidero del tubo de corriente capturado, cuya intensidad es la velocidad en la cara de entrada menos la de vuelo (así un motor en molinete o con poco gas en vuelo derrama, y un compresor en bombeo sopla aire por la toma); cerca de un cuerpo su velocidad radial sigue la pendiente del perfil, leída un poco por delante, y tras la tobera el chorro libre prolonga el cuerpo, de modo que el aire exterior se desliza por su capa de corte y es arrastrado por ella. Dentro, las partículas siguen corrientes programadas (radio, velocidad y temperatura por estación) con el giro de los rotores, una deriva lenta en la llama y en el chorro libre, y un factor de paso `q` que se anula con el motor parado y sin viento.
+- Las estelas son cuadriláteros en espacio de pantalla (ancho constante en píxeles, bordes suaves, cabeza redonda) dibujados con alfa premultiplicado; con un corte, la mayoría de las partículas nuevas nacen en el sector abierto para que se vea el flujo interno. El aire exterior se atenúa con la altitud. Tras el cono del estatorreactor el aire gira dentro del choque cónico; el aire capturado por el scramjet mantiene su altura hasta que lo alcanza el choque de la proa. El viento cruzado añade una corriente lateral y, en tierra con una toma parada que succiona, un filamento de vórtice sube del suelo al labio inferior. Por encima de M 8 las temperaturas del scramjet ignoran la disociación.
+- El inversor del turbofan es un manguito deslizante con cascadas y diez compuertas: la corriente de derivación se desvía a una corriente invertida que sale hacia delante por las cascadas y se libera como aire exterior (que la toma puede volver a tragar a baja velocidad); el ciclo cuenta entonces la cantidad de movimiento del bypass hacia delante y el empuje se vuelve negativo.
+- El mapa del compresor es esquemático: la línea de funcionamiento es el régimen estable, la línea de bombeo queda un 10–22 % por encima, y el punto sube con el exceso de combustible sobre el régimen estable (la misma magnitud que limita el FADEC), así que un acelerón sin limitador cruza la línea justo cuando la dinámica dispara el bombeo.
+- El sonido es sintetizado: un diente de sierra a la mitad de la frecuencia de paso de álabes del fan, un silbido senoidal del eje de alta, ruido filtrado para la combustión y el chorro, un rugido en banda para el postquemador, un barrido triangular para el arrancador y una ráfaga de ruido en el bombeo o el *unstart*.
+- La calidad baja sola un nivel de partículas cuando un cuadro cuesta más de 22 ms de CPU durante tres segundos.
 
-## Debugging
+## Depuración
 
-The page exposes `window.__sim` (camera, controls, state, `dyn`, `loadEngine`, `flyTo`, `fps`) so the simulation can be driven from the browser console. The browser pane throttles `requestAnimationFrame` while tools run, so fps readings there are meaningless.
+La página expone `window.__sim` (cámara, controles, estado, `dyn`, `engine`, `R`, `loadEngine`, `flyTo`, `fps`, `renderer`) para manejar la simulación desde la consola del navegador.
