@@ -33,7 +33,8 @@ class Engine{
   /* variable stator vanes: the row pivots about its radial axis by fn(R) degrees */
   vsvRow(o,info,fn){const m=bladeRow(o);this.part(m,info);this.vsv.push({mesh:m,n:o.n,fn,cur:NaN});return m;}
   flame(mesh,fn){this.group.add(mesh);this.flames.push({mesh,fn,cur:0});return mesh;}
-  stream(def){const s={kind:def.kind||'annular',name:def.name,next:def.next||null,pmap:def.pmap||null,X:[],A:[],B:[],C:[],vf:[],Tf:[],V:[],TT:[]};for(const st of def.st){s.X.push(st[0]);s.A.push(st[1]);s.B.push(st[2]);s.vf.push(st[3]);s.Tf.push(st[4]);s.C.push(st[5]??0.6);}s.V=new Float32Array(s.X.length);s.TT=new Float32Array(s.X.length);this.streams.push(s);return s;}
+  /* def.jet: x where the stream leaves the engine and becomes a free jet (shear-layer mixing) */
+  stream(def){const s={kind:def.kind||'annular',name:def.name,next:def.next||null,pmap:def.pmap||null,jet:def.jet,X:[],A:[],B:[],C:[],vf:[],Tf:[],V:[],TT:[]};for(const st of def.st){s.X.push(st[0]);s.A.push(st[1]);s.B.push(st[2]);s.vf.push(st[3]);s.Tf.push(st[4]);s.C.push(st[5]??0.6);}s.V=new Float32Array(s.X.length);s.TT=new Float32Array(s.X.length);this.streams.push(s);return s;}
   evalStreams(R){for(const s of this.streams)for(let i=0;i<s.X.length;i++){s.V[i]=s.vf[i](R);s.TT[i]=s.Tf[i](R);}}
   /* pressure ratio to ambient along a stream, from its [x, station] map */
   pressureAt(s,x,R){const pm=s.pmap||this.pmap;if(!pm)return 1;if(x<=pm[0][0])return R.st[pm[0][1]].P/R.P0;for(let i=0;i<pm.length-1;i++){if(x<=pm[i+1][0]){const f=(x-pm[i][0])/(pm[i+1][0]-pm[i][0]);return Math.exp(lerp(Math.log(R.st[pm[i][1]].P),Math.log(R.st[pm[i+1][1]].P),f))/R.P0;}}return R.st[pm[pm.length-1][1]].P/R.P0;}
@@ -53,7 +54,11 @@ class Engine{
   dispose(){disposeCaps(this);this.group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>m.dispose());}});for(const p of this.parts){p.matT.dispose();}}
 }
 
-/* body of revolution: deflects outside air and keeps particles out of the solid */
-function annularBody(E,prof){E.rBody=prof;E.inside=(x,y,z)=>{const r=profileAt(prof,x);return r>=0&&Math.hypot(y,z)<r+0.04;};E.deflect=(P,i)=>{const x=P[i*3],y=P[i*3+1],z=P[i*3+2];const rb=profileAt(prof,x);if(rb<0)return;const r=Math.hypot(y,z);if(r<rb+0.04){const s=(rb+0.045)/(r||1e-6);P[i*3+1]=r<1e-6?rb+0.045:y*s;P[i*3+2]=r<1e-6?0:z*s;}};}
+/* body of revolution: the outer profile the air is steered around (flow.js), its extent, whether the
+   nose is solid (a spike) or a hollow lip, and the hard constraint that keeps particles out of it */
+function annularBody(E,prof){E.rBody=prof;E.xNose=prof[0][0];E.xEnd=prof[prof.length-1][0];E.solidNose=prof[0][1]<0.05;E.steerD=0.1+0.35*Math.max(...prof.map(p=>p[1]));
+  E.inside=(x,y,z)=>{const r=profileAt(prof,x);return r>=0&&Math.hypot(y,z)<r+0.04;};
+  /* the hollow inlet duct (ahead of the capture plane, inside the capture radius) is open air */
+  E.deflect=(P,i)=>{const x=P[i*3],y=P[i*3+1],z=P[i*3+2];const rb=profileAt(prof,x);if(rb<0)return;const r=Math.hypot(y,z);const cap=E.capture;if(cap&&!cap.channel&&x<cap.x&&r<cap.r)return;if(r<rb+0.04){const s=(rb+0.045)/(r||1e-6);P[i*3+1]=r<1e-6?rb+0.045:y*s;P[i*3+2]=r<1e-6?0:z*s;}};}
 
 export {Engine,annularBody,stationOf};

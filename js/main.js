@@ -1,4 +1,5 @@
 /* Entry point: wires up the UI, loads the turbofan and runs the simulation loop */
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
 import {$} from './core/utils.js';
 import {state} from './state.js';
 import {renderer,scene,camera,controls,composer,updateFlight,flyTo} from './core/scene.js';
@@ -8,7 +9,7 @@ import {app,initUI,loadEngine,updatePanel,pick,pointer} from './ui.js';
 initUI();
 loadEngine('turbofan');
 
-let last=performance.now(),uiAcc=0,first=true,fpsN=0,fpsT=performance.now(),fps=0;
+let last=performance.now(),uiAcc=0,first=true,fpsN=0,fpsT=performance.now(),fps=0;const bufSize=new THREE.Vector2();
 function frame(now){
   requestAnimationFrame(frame);
   const real=Math.min(0.05,Math.max(0,(now-last)/1000));last=now;
@@ -19,7 +20,7 @@ function frame(now){
   const R=app.R=def.thermo(c);app.dyn.annotate(R,state);
   engine.update(R,dt);
   updateMaterials(engine,R,state);
-  if(state.flow)app.flow.update(dt,engine,R,state.view);
+  if(state.flow){renderer.getDrawingBufferSize(bufSize);app.flow.setViewport(bufSize.x,bufSize.y,renderer.getPixelRatio());app.flow.update(dt,engine,R,state.view);}
   if(pointer.due&&now-pointer.last>90){pointer.due=false;pointer.last=now;pick();}
   updateFlight(real);controls.update();
   if(state.bloom)composer.render();else renderer.render(scene,camera);

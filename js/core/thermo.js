@@ -34,10 +34,11 @@ function thermoTurbofan(c){
   const core=nozzle(Tt5,Pt5*0.98,P0,GH,CPH),byp=nozzle(Tt13,Pt13*0.985,P0,G,CP);
   let F=mc*(core.v-V0)+mb*(byp.v-V0);F=lit?Math.max(0,F)*(1-0.8*surge):-0.25*mdot*V0;
   const ke=Math.max(0,0.5*(mc*(core.v*core.v-V0*V0)+mb*(byp.v*byp.v-V0*V0)));
-  const vIn=30+150*N1,vFan=40+140*N1;
+  /* q: how much of the through-flow is actually moving (0 with the engine stopped and no wind) */
+  const q=clamp(Math.max(N1/0.2,M/0.5),0,1);const vIn=(30+150*N1)*q,vFan=(40+140*N1)*q;
   const R={...A,Tt13,Tt25,Tt3,Tt4,Tt45,Tt5,T9:core.T9,T19:byp.T9,v9:core.v,v19:byp.v,mdot,mc,mb,OPR:PRf*PRl*PRh,BPR,N1,N2,rpm:{N1:N1*2550,N2:N2*10850},
-    burn:lit?clamp(dT/850,0,1):0,ab:0,vIn,vFan,EGT:Tt5,lit,surge,vk:1-1.8*surge,Tcool:Tt3,warnings:[],
-    st:{amb:{T:T0,P:P0,V:V0},in:{T:Tt0,P:Pt0,V:vIn},fan:{T:Tt13,P:Pt13,V:vFan},lpc:{T:Tt25,P:Pt25,V:vFan*0.9},hpc:{T:Tt3,P:Pt3,V:vFan*0.8},comb:{T:Tt4,P:Pt4,V:90+90*N1},hpt:{T:Tt45,P:Pt45,V:200+180*N1},lpt:{T:Tt5,P:Pt5,V:150+120*N1},noz:{T:core.T9,P:P0,V:core.v},byp:{T:byp.T9,P:P0,V:byp.v}},
+    burn:lit?clamp(dT/850,0,1):0,ab:0,q,vIn,vFan,EGT:Tt5,lit,surge,vk:1-1.8*surge,Tcool:Tt3,warnings:[],
+    st:{amb:{T:T0,P:P0,V:V0},in:{T:Tt0,P:Pt0,V:vIn},fan:{T:Tt13,P:Pt13,V:vFan},lpc:{T:Tt25,P:Pt25,V:vFan*0.9},hpc:{T:Tt3,P:Pt3,V:vFan*0.8},comb:{T:Tt4,P:Pt4,V:(90+90*N1)*q},hpt:{T:Tt45,P:Pt45,V:(200+180*N1)*q},lpt:{T:Tt5,P:Pt5,V:(150+120*N1)*q},noz:{T:core.T9,P:P0,V:core.v},byp:{T:byp.T9,P:P0,V:byp.v}},
     cycle:[['0','amb'],['2','in'],['13','fan'],['25','lpc'],['3','hpc'],['4','comb'],['45','hpt'],['5','lpt'],['9','noz']]};
   perf(R,F,mdot,Wf,ke,LHV);
   if(Tt5>1223)R.warnings.push(['off','EGT por encima del límite (950 °C)']);
@@ -62,9 +63,9 @@ function thermoTurbojet(c){
   const noz=nozzle(Tt7,Pt7,P0,GH,CPH);
   let F=mdot*(noz.v-V0);F=lit?Math.max(0,F)*(1-0.8*surge):-0.25*mdot*V0;
   const ke=Math.max(0,0.5*mdot*(noz.v*noz.v-V0*V0));
-  const vIn=40+130*N;
-  const R={...A,Tt3,Tt4,Tt5,Tt7,T9:noz.T9,v9:noz.v,mdot,OPR:PRc,N,rpm:{N:N*7685},burn:lit?clamp(dT/650,0,1):0,ab,vIn,EGT:Tt5,lit,surge,vk:1-1.8*surge,Tcool:Tt3,warnings:[],
-    st:{amb:{T:T0,P:P0,V:V0},in:{T:Tt0,P:Pt0,V:vIn},comp:{T:Tt3,P:Pt3,V:vIn*0.85},comb:{T:Tt4,P:Pt4,V:60+80*N},turb:{T:Tt5,P:Pt5,V:180+150*N},ab:{T:Tt7,P:Pt7,V:150+100*N+150*ab},noz:{T:noz.T9,P:P0,V:noz.v}},
+  const q=clamp(Math.max(N/0.3,M/0.5),0,1);const vIn=(40+130*N)*q;
+  const R={...A,Tt3,Tt4,Tt5,Tt7,T9:noz.T9,v9:noz.v,mdot,OPR:PRc,N,rpm:{N:N*7685},burn:lit?clamp(dT/650,0,1):0,ab,q,vIn,EGT:Tt5,lit,surge,vk:1-1.8*surge,Tcool:Tt3,warnings:[],
+    st:{amb:{T:T0,P:P0,V:V0},in:{T:Tt0,P:Pt0,V:vIn},comp:{T:Tt3,P:Pt3,V:vIn*0.85},comb:{T:Tt4,P:Pt4,V:(60+80*N)*q},turb:{T:Tt5,P:Pt5,V:(180+150*N)*q},ab:{T:Tt7,P:Pt7,V:(150+100*N+150*ab)*q},noz:{T:noz.T9,P:P0,V:noz.v}},
     cycle:[['0','amb'],['2','in'],['3','comp'],['4','comb'],['5','turb'],['7','ab'],['9','noz']]};
   perf(R,F,mdot,Wf+WfAB,ke,LHV);
   if(Tt5>1050)R.warnings.push(['off','EGT por encima del límite (780 °C)']);
@@ -82,7 +83,7 @@ function thermoRamjet(c){
   const dT=burn*Math.max(0,Math.min(1950,2350-Tt0));const Tt4=Tt0+dT,Pt4=Pt0*0.93;
   const noz=nozzle(Tt4,Pt4,P0,GH,CPH);const F=Math.max(0,mdot*(noz.v-V0));
   const Wf=mdot*CPH*dT/(0.95*LHV);const ke=Math.max(0,0.5*mdot*(noz.v*noz.v-V0*V0));
-  const R={...A,Tt4,T9:noz.T9,v9:noz.v,mdot,OPR:Pt4/P0,rpm:{},burn,ab:burn,EGT:Tt4,lit:burn>0.02,vk:1,Tcool:T0+250,warnings:[],
+  const R={...A,Tt4,T9:noz.T9,v9:noz.v,mdot,OPR:Pt4/P0,rpm:{},burn,ab:burn,q:1,EGT:Tt4,lit:burn>0.02,vk:1,Tcool:T0+250,warnings:[],
     st:{amb:{T:T0,P:P0,V:V0},in:{T:Tt0*0.92,P:Pt0,V:V0*0.6},diff:{T:Tt0,P:Pt0*0.98,V:Math.max(1,V0*0.3)},comb:{T:Tt4,P:Pt4,V:V0*0.45+100*burn},noz:{T:noz.T9,P:P0,V:Math.max(noz.v,V0*0.6)}},
     cycle:[['0','amb'],['2','diff'],['4','comb'],['9','noz']]};
   perf(R,F,mdot,Wf,ke,LHV);
@@ -106,7 +107,7 @@ function thermoScramjet(c){
   const P3=Pt0*Math.pow(1/(1+0.2*M3*M3),3.5),Pramp=P0*(1+0.12*M*M);
   const noz=nozzle(Tt4,Pt4,P0,GH,CPH);const F=Math.max(0,mdot*(noz.v-V0))*(1-0.9*unstart);
   const Wf=mdot*CPH*dTt/(0.85*LHV_H2);const ke=Math.max(0,0.5*mdot*(noz.v*noz.v-V0*V0));
-  const R={...A,Tt4,T3,T4s,Tramp,M3,T9:noz.T9,v9:noz.v,mdot,OPR:Pt4/P0,rpm:{},burn,ab:burn,EGT:Tt4,lit:burn>0.02,vk:1,Tcool:T0+400,unstart,chokeMargin:lim>0?1-burnCmd*1650/lim:-1,warnings:[],
+  const R={...A,Tt4,T3,T4s,Tramp,M3,T9:noz.T9,v9:noz.v,mdot,OPR:Pt4/P0,rpm:{},burn,ab:burn,q:1,EGT:Tt4,lit:burn>0.02,vk:1,Tcool:T0+400,unstart,chokeMargin:lim>0?1-burnCmd*1650/lim:-1,warnings:[],
     st:{amb:{T:T0,P:P0,V:V0},ramp:{T:Tramp,P:Pramp,V:V0*0.93},iso:{T:T3,P:P3,V:V0*0.8},comb:{T:T4s,P:P3*0.9,V:V0*0.85},noz:{T:noz.T9,P:P0,V:Math.max(noz.v,V0)}},
     cycle:[['0','amb'],['2','ramp'],['3','iso'],['4','comb'],['9','noz']]};
   perf(R,F,mdot,Wf,ke,LHV_H2);

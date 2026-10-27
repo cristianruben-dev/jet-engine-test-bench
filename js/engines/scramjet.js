@@ -6,7 +6,7 @@ import {box,merge,extrudeZ,profileAt} from '../core/geometry.js';
 import {flameTube} from '../core/flame.js';
 import {shockMat,shockAngle,machAfter} from '../core/shocks.js';
 import {PLANE_Z} from '../core/cuts.js';
-import {lerp,smooth,fmt,DEG} from '../core/utils.js';
+import {lerp,smooth,clamp,fmt,DEG} from '../core/utils.js';
 
 const SJ_WALL=[[-2.6,0.45],[-1.4,0.34],[0.0,0.08],[1.2,0.08],[2.6,0.12],[5.2,0.78]];
 const SJ_TOP=[[-2.6,0.45],[-0.4,0.95],[5.2,0.95]];
@@ -43,8 +43,14 @@ function buildScramjet(){
     bow.visible=(R.unstart||0)>0.05;bow.material.opacity=0.3*(R.unstart||0);});
   E.inside=(x,y,z)=>{if(Math.abs(z)>0.62)return false;if(x>=-2.6&&x<=5.2){const w=sjWall(x),t=sjTop(x);if(y>w-0.02&&y<t+0.02)return true;}if(x>=0&&x<=3.3&&y>-0.3&&y<-0.2)return true;return false;};
   E.deflect=(P,i)=>{const x=P[i*3],y=P[i*3+1],z=P[i*3+2];if(Math.abs(z)>0.62)return;if(x>=-2.6&&x<=5.2){const w=sjWall(x),t=sjTop(x);if(y>w-0.02&&y<t+0.02){P[i*3+1]=y<(w+t)/2?w-0.03:t+0.03;return;}}if(x>=0&&x<=3.3&&y>-0.3&&y<-0.2){P[i*3+1]=-0.31;}};
-  E.capture={x:-3.2,channel:true,yl:-0.5,yh:0.45,zh:0.58};E.suction=()=>0;
-  E.stream({name:'flow',kind:'channel',pmap:[[-3.2,'amb'],[-2.6,'amb'],[-1.4,'ramp'],[0,'iso'],[1.2,'iso'],[2.6,'comb'],[5.2,'noz']],st:[[-3.2,-0.5,0.45,R=>R.V0,R=>R.T0,0.58],[-2.6,-0.5,0.45,R=>R.V0,R=>R.T0,0.58],[-1.4,-0.42,0.34,R=>R.V0*0.93,R=>R.T0*1.35,0.58],[0.0,-0.22,0.08,R=>R.V0*0.82,R=>R.T3,0.58],[1.2,-0.22,0.08,R=>R.V0*0.8,R=>R.T3,0.58],[2.6,-0.22,0.12,R=>R.V0*0.85,R=>R.T4s,0.58],[3.3,-0.24,0.3,R=>R.V0*0.95,R=>R.T4s,0.6],[5.2,-0.45,0.78,R=>Math.max(R.v9,R.V0),R=>R.T9,0.75],[8,-0.9,1.3,R=>Math.max(R.v9,R.V0)*0.9,R=>lerp(R.T9,R.T0,0.4),1.0]]});
+  /* air over the vehicle follows the upper surface (read a little ahead so it rises before the nose);
+     under the cowl it runs flat along the lower skin */
+  E.xEnd=5.2;
+  E.steer=(x,y,z,v)=>{if(Math.abs(z)>0.75)return;const la=v[0]>=0?0.25:-0.25,t0=sjTop(x),t1=sjTop(x+la),t=Math.max(t0,t1);
+    if(t>=0&&y>t-0.03){const gap=y-t,d=0.45;if(gap>d)return;const w=1-Math.max(gap,0)/d;const slope=(t0>=0&&t1>=0)?clamp((t1-t0)/la,-1.2,1.2):(t1>=0?1.4:-0.6)*Math.sign(la);let dv=(v[0]*slope-v[1])*w*w;if(gap<0.05)dv+=(0.05-gap)*6;v[1]+=dv;return;}
+    const cw=-0.28;if(x>-0.3&&x<3.5&&y<cw&&y>cw-0.35){const w=1-(cw-y)/0.35;v[1]-=v[1]*w*w;if(cw-y<0.05)v[1]-=(0.05-(cw-y))*6;}};
+  E.capture={x:-3.2,channel:true,yl:-0.5,yh:0.45,zh:0.58};
+  E.stream({name:'flow',kind:'channel',jet:3.3,pmap:[[-3.2,'amb'],[-2.6,'amb'],[-1.4,'ramp'],[0,'iso'],[1.2,'iso'],[2.6,'comb'],[5.2,'noz']],st:[[-3.2,-0.5,0.45,R=>R.V0,R=>R.T0,0.58],[-2.6,-0.5,0.45,R=>R.V0,R=>R.T0,0.58],[-1.4,-0.42,0.34,R=>R.V0*0.93,R=>R.T0*1.35,0.58],[0.0,-0.22,0.08,R=>R.V0*0.82,R=>R.T3,0.58],[1.2,-0.22,0.08,R=>R.V0*0.8,R=>R.T3,0.58],[2.6,-0.22,0.12,R=>R.V0*0.85,R=>R.T4s,0.58],[3.3,-0.24,0.3,R=>R.V0*0.95,R=>R.T4s,0.6],[5.2,-0.45,0.78,R=>Math.max(R.v9,R.V0),R=>R.T9,0.75],[8,-0.9,1.3,R=>Math.max(R.v9,R.V0)*0.9,R=>lerp(R.T9,R.T0,0.4),1.0]]});
   E.spawn={x0:-7,x1:10,r:2.1,yc:0.1};
   E.table=[['Rampas y borde de ataque','ramp',0.35],['Aislador (estática)','iso',0.5],['Cámara (estática)','comb',0.5],['Chorro de salida','noz']];
   E.readouts=R=>[['Mach',fmt(R.M,1),''],['Velocidad',fmt(R.V0*3.6),'km/h'],['Empuje',fmt(R.F/1000,1),'kN'],['Flujo de aire',fmt(R.mdot,1),'kg/s'],['Hidrógeno',fmt(R.Wf,2),'kg/s'],['Consumo esp.',fmt(R.TSFC*1e6,1),'g/kN·s'],['Mach en cámara',fmt(R.M3,1),''],['Margen bloqueo',R.chokeMargin>=0?fmt(R.chokeMargin*100)+' %':'—',''],['Rend. propulsivo',fmt(R.etaP*100),'%'],['Rend. térmico',fmt(R.etaT*100),'%'],['Altitud',fmt(R.alt),'m'],['Partes móviles','0','']];
