@@ -4,7 +4,7 @@ Simulador 3D interactivo de cuatro motores a reacción, hecho con Three.js y sin
 
 <p align="center"><img src="docs/img/turbofan-corte.jpg" alt="Turbofan en corte de un cuarto con el flujo de aire" width="100%"></p>
 
-**Demo en línea:** _pendiente de publicar en GitHub Pages_.
+**Demo en línea:** <https://cristianruben-dev.github.io/jet-engine-test-bench/> · Código: <https://github.com/cristianruben-dev/jet-engine-test-bench>
 
 ## Qué puedes hacer
 
