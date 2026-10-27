@@ -32,12 +32,13 @@ function thermoTurbofan(c){
   const [Tt45,Pt45]=expand(Tt4,Pt4,(CP/CPH)*(Tt3-Tt25)/1.02,0.9);
   const [Tt5,Pt5]=expand(Tt45,Pt45,(CP/CPH)*((1+BPR)*(Tt13-Tt0)+(Tt25-Tt13))/1.02,0.9);
   const core=nozzle(Tt5,Pt5*0.98,P0,GH,CPH),byp=nozzle(Tt13,Pt13*0.985,P0,G,CP);
-  let F=mc*(core.v-V0)+mb*(byp.v-V0);F=lit?Math.max(0,F)*(1-0.8*surge):-0.25*mdot*V0;
+  /* thrust reverser: the bypass jet leaves forward through the cascades (rev = deployed fraction) */
+  const rev=clamp(c.rev||0,0,1);let F=mc*(core.v-V0)+mb*(byp.v*(1-1.65*rev)-V0);F=lit?(rev>0.01?F:Math.max(0,F))*(1-0.8*surge):-0.25*mdot*V0;
   const ke=Math.max(0,0.5*(mc*(core.v*core.v-V0*V0)+mb*(byp.v*byp.v-V0*V0)));
   /* q: how much of the through-flow is actually moving (0 with the engine stopped and no wind) */
   const q=clamp(Math.max(N1/0.2,M/0.5),0,1);const vIn=(30+150*N1)*q,vFan=(40+140*N1)*q;
   const R={...A,Tt13,Tt25,Tt3,Tt4,Tt45,Tt5,T9:core.T9,T19:byp.T9,v9:core.v,v19:byp.v,mdot,mc,mb,OPR:PRf*PRl*PRh,BPR,N1,N2,rpm:{N1:N1*2550,N2:N2*10850},
-    burn:lit?clamp(dT/850,0,1):0,ab:0,q,vIn,vFan,EGT:Tt5,lit,surge,vk:1-1.8*surge,Tcool:Tt3,warnings:[],
+    burn:lit?clamp(dT/850,0,1):0,ab:0,q,rev,vIn,vFan,EGT:Tt5,lit,surge,vk:1-1.8*surge,Tcool:Tt3,warnings:[],
     st:{amb:{T:T0,P:P0,V:V0},in:{T:Tt0,P:Pt0,V:vIn},fan:{T:Tt13,P:Pt13,V:vFan},lpc:{T:Tt25,P:Pt25,V:vFan*0.9},hpc:{T:Tt3,P:Pt3,V:vFan*0.8},comb:{T:Tt4,P:Pt4,V:(90+90*N1)*q},hpt:{T:Tt45,P:Pt45,V:(200+180*N1)*q},lpt:{T:Tt5,P:Pt5,V:(150+120*N1)*q},noz:{T:core.T9,P:P0,V:core.v},byp:{T:byp.T9,P:P0,V:byp.v}},
     cycle:[['0','amb'],['2','in'],['13','fan'],['25','lpc'],['3','hpc'],['4','comb'],['45','hpt'],['5','lpt'],['9','noz']]};
   perf(R,F,mdot,Wf,ke,LHV);
@@ -45,6 +46,7 @@ function thermoTurbofan(c){
   if(Tt4>1950)R.warnings.push(['off','Temperatura de turbina excesiva']);
   const tEq=clamp((c.fuel-0.1)/0.9,0,1);
   if(!lit){R.status='Sin combustión';R.level='off';}
+  else if(rev>0.5){R.status='Inversor desplegado: el aire de derivación sale hacia delante por las cascadas y el empuje es negativo';R.level='warn';}
   else if(tEq>0.85){R.status='Potencia de despegue: TIT máxima, el fan aporta ~85 % del empuje';R.level='warn';}
   else if(tEq<0.12){R.status='Ralentí: el eje de alta (N2) gira al 62 % aunque el fan vaya despacio';R.level='ok';}
   else{R.status='Régimen de crucero/ascenso: ciclo estable';R.level='ok';}

@@ -1,6 +1,6 @@
 # Jet Engine Test Bench
 
-Interactive 3D simulation (Three.js) of four jet engines: a high-bypass turbofan, an afterburning turbojet, a ramjet and a scramjet. Moving parts, airflow streaks that are sucked into the inlet, steered around the bodies and mixed in the jet, casing cutaways with stencil-capped section faces, per-part tooltips and four paint modes (materials, temperature of gas or cooled metal, pressure, velocity) computed from a simplified thermodynamic cycle. Spool dynamics run in real time: start-up with a starter motor, fuel cut and windmilling, a FADEC acceleration limiter that can be switched off to provoke compressor surge, lean flameout at altitude and scramjet unstart. A chart compares the four engines against Mach (specific thrust and specific fuel consumption) next to a live T-s diagram. The user interface is in Spanish.
+Interactive 3D simulation (Three.js) of four jet engines: a high-bypass turbofan, an afterburning turbojet, a ramjet and a scramjet. Moving parts, airflow streaks that are sucked into the inlet, steered around the bodies and mixed in the jet, casing cutaways with stencil-capped section faces, per-part tooltips, station labels projected over the scene and four paint modes (materials, temperature of gas or cooled metal, pressure, velocity) computed from a simplified thermodynamic cycle. Spool dynamics run in real time: start-up with a starter motor, fuel cut and windmilling, a FADEC acceleration limiter that can be switched off to provoke compressor surge, lean flameout at altitude, scramjet unstart and a thrust reverser on the turbofan. Charts: the four engines against Mach, a live T-s diagram, a strip chart of the last minute and the compressor map with its surge line. Synthesised engine sound (WebAudio), crosswind with a ground vortex, and the whole state in the URL hash so a scenario can be shared. The user interface is in Spanish.
 
 ## Run
 
@@ -12,11 +12,17 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 then open <http://localhost:8765/>. Three.js and its addons load from jsDelivr.
 
+The model (atmosphere, cycles, spool dynamics, compressor map) has no DOM dependency and is tested in Node:
+
+```bash
+node --test
+```
+
 ## Interface
 
-Full-bleed 3D scene. Top left: title, engine tabs and the engine description (replaced by the guided-tour card while a tour runs). Bottom centre, floating over the scene: the colour scale of the active view and the view toolbar (paint mode, gas/metal, cutaway, camera presets, pause). Right: the instrument panel, with a fixed head (throttle, airspeed, altitude, start/cut button, FADEC limiter, status line, warnings and four key instruments per engine) and a tabbed body: Instrumentos, Gráficas, Escenarios, Ajustes. On phones the panel becomes a bottom sheet and the canvas sits above it; the sheet collapses to the status line and the key instruments.
+Full-bleed 3D scene. Top left: title, engine tabs and the engine description (replaced by the guided-tour card while a tour runs). Bottom centre, floating over the scene: the colour scale of the active view and the view toolbar (paint mode, gas/metal, cutaway, camera presets, station labels, sound, pause). Right: the instrument panel, with a fixed head (throttle, airspeed, altitude, crosswind, start/cut button, FADEC limiter, thrust reverser on the turbofan, status line, warnings and four key instruments per engine) and a tabbed body: Instrumentos, Gráficas (four engines vs Mach, T-s cycle, 60 s strip chart, compressor map), Escenarios, Ajustes. On phones the panel becomes a bottom sheet and the canvas sits above it; the sheet collapses to the status line and the key instruments. Engine, throttle, speed, altitude, crosswind, view, cut, labels, reverser and camera are kept in the URL hash.
 
-Keyboard: `Space` pause, `1`–`4` paint modes, `C` cycles the cutaway, `Esc` closes the tour, `←`/`→` move between tabs.
+Keyboard: `Space` pause, `1`–`4` paint modes, `C` cycles the cutaway, `E` station labels, `S` sound, `Esc` closes the tour, `←`/`→` move between tabs.
 
 ## Layout
 
@@ -24,7 +30,7 @@ Keyboard: `Space` pause, `1`–`4` paint modes, `C` cycles the cutaway, `Esc` cl
 index.html               Page markup only (no styles, no logic)
 css/styles.css           Stylesheet (tokens, stage overlays, toolbar, panel, charts, tour, phone sheet)
 js/main.js               Entry point and simulation loop (dynamics → cycle → paint → flow)
-js/ui.js                 Tabs, sliders, start/stop, toolbar, legend, panel head and panes, charts, scenarios, tour, tooltip
+js/ui.js                 Tabs, sliders, start/stop, toolbar, legend, panel head and panes, charts, scenarios, tour, tooltip, station labels, URL hash
 js/state.js              Global state, time-scale constants, particle budgets
 js/fallback.js           Warning when the CDN does not respond
 js/core/utils.js         Numeric helpers, formatting and the palette of every view
@@ -42,12 +48,14 @@ js/core/thermo.js        Thermodynamic cycle of each engine: stations (T, P, V),
 js/core/dynamics.js      Spool dynamics, start/stop, FADEC limiter, surge, flameout, unstart
 js/core/flow.js          Air streaks in one instanced draw call: inlet sink, body steering, streams, swirl, jet mixing, view colouring
 js/core/paint.js         Per-part colour by view (glow, temperature, pressure, velocity) and cap colours
-js/core/charts.js        Comparison chart (four engines vs Mach) and the T-s diagram
+js/core/charts.js        Comparison chart (four engines vs Mach), T-s diagram, 60 s strip chart and the compressor map
+js/core/sound.js         Synthesised engine sound: fan tone, whine, rumble, hiss, afterburner, starter, surge bang
 js/engines/turbofan.js   Turbofan geometry, VSVs, bleed valves, pylon, streams, tour
 js/engines/turbojet.js   Turbojet with variable IGVs, afterburner and petal nozzle
 js/engines/ramjet.js     Ramjet with inlet spike
 js/engines/scramjet.js   Scramjet with ramps, oblique shocks and fins
 js/engines/index.js      Engine catalog (builder, thermo, ranges, copy, scenario presets)
+test/model.test.mjs      Node tests of the atmosphere, the cycles, the spool dynamics and the compressor map
 ```
 
 ## Model notes
@@ -55,7 +63,11 @@ js/engines/index.js      Engine catalog (builder, thermo, ranges, copy, scenario
 - Station temperatures are total (stagnation) gas temperatures; the thermal view can show instead the metal temperature of cooled parts, `T_metal = T_gas − cool·(T_gas − T_coolant)` with the coolant at compressor-delivery temperature.
 - Fuel flow comes from the heat added per station (`ΔT = f·LHV·η/cp`); specific fuel consumption, propulsive and thermal efficiency are derived from it.
 - The flow is not a CFD. Outside the engine each particle moves with the free stream plus the sink of the captured stream tube, whose strength is the inlet face velocity minus the flight speed (so a windmilling or throttled-back engine at speed spills, and a surging compressor blows air out of the inlet); near a body its radial velocity follows the slope of the profile, read a little ahead, and behind the nozzle the free jet continues the body so the outside air rides along the shear layer and is dragged by it. Inside, particles follow programmed streams (radius, velocity and temperature per station) with rotor swirl, a slowly wandering drift in the flame and in the free jet, and a through-flow factor `q` that goes to zero with the engine stopped and no wind.
-- Streaks are screen-space quads (constant pixel width, soft edges, round head) drawn with premultiplied alpha; with a cutaway most new particles start in the open sector so the internal flow can be seen. Above about Mach 8 the scramjet temperatures ignore dissociation.
+- Streaks are screen-space quads (constant pixel width, soft edges, round head) drawn with premultiplied alpha; with a cutaway most new particles start in the open sector so the internal flow can be seen. Outside air draws fainter with altitude (density). Behind the spike of the ramjet the air turns inside the conical shock; the scramjet's captured air keeps its height until the nose shock reaches it. Crosswind adds a lateral free stream, and on the ground with a static, sucking inlet a vortex filament rises from the floor into the lower lip. Above about Mach 8 the scramjet temperatures ignore dissociation.
+- The turbofan's thrust reverser is a translating sleeve with cascades and ten blocker doors: the bypass stream is diverted into a reversed stream that leaves forward through the cascades and is released as free air (which the inlet can re-ingest at low speed); the cycle then counts the bypass momentum forward, so the thrust goes negative.
+- The compressor map is schematic: the operating line is the steady schedule, the surge line sits 10–22 % above it, and the live point rises with the fuel excess over the steady schedule (the same quantity the FADEC limiter caps), so a throttle slam without the limiter crosses the surge line exactly when the dynamics trigger the surge.
+- The sound is synthesised: a sawtooth at half the fan's blade-pass frequency, a sine whine from the core spool, low-passed noise for combustion and the jet, a band-passed roar for the afterburner, a triangle sweep for the starter and a noise burst for a surge or an unstart.
+- Quality drops one particle level by itself when a frame costs more than 22 ms of CPU for three seconds.
 
 ## Debugging
 

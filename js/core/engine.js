@@ -34,7 +34,9 @@ class Engine{
   vsvRow(o,info,fn){const m=bladeRow(o);this.part(m,info);this.vsv.push({mesh:m,n:o.n,fn,cur:NaN});return m;}
   flame(mesh,fn){this.group.add(mesh);this.flames.push({mesh,fn,cur:0});return mesh;}
   /* def.jet: x where the stream leaves the engine and becomes a free jet (shear-layer mixing) */
-  stream(def){const s={kind:def.kind||'annular',name:def.name,next:def.next||null,pmap:def.pmap||null,jet:def.jet,X:[],A:[],B:[],C:[],vf:[],Tf:[],V:[],TT:[]};for(const st of def.st){s.X.push(st[0]);s.A.push(st[1]);s.B.push(st[2]);s.vf.push(st[3]);s.Tf.push(st[4]);s.C.push(st[5]??0.6);}s.V=new Float32Array(s.X.length);s.TT=new Float32Array(s.X.length);this.streams.push(s);return s;}
+  /* def.divert(x,R) → index of another stream to jump to (thrust reverser); def.release: particles leaving
+     the upstream end of a reversed stream become free air; def.jetBelow: free-jet mixing below this x */
+  stream(def){const s={kind:def.kind||'annular',name:def.name,next:def.next||null,pmap:def.pmap||null,jet:def.jet,jetBelow:def.jetBelow,shock:def.shock||null,divert:def.divert||null,release:!!def.release,X:[],A:[],B:[],C:[],vf:[],Tf:[],V:[],TT:[]};for(const st of def.st){s.X.push(st[0]);s.A.push(st[1]);s.B.push(st[2]);s.vf.push(st[3]);s.Tf.push(st[4]);s.C.push(st[5]??0.6);}s.V=new Float32Array(s.X.length);s.TT=new Float32Array(s.X.length);this.streams.push(s);return s;}
   evalStreams(R){for(const s of this.streams)for(let i=0;i<s.X.length;i++){s.V[i]=s.vf[i](R);s.TT[i]=s.Tf[i](R);}}
   /* pressure ratio to ambient along a stream, from its [x, station] map */
   pressureAt(s,x,R){const pm=s.pmap||this.pmap;if(!pm)return 1;if(x<=pm[0][0])return R.st[pm[0][1]].P/R.P0;for(let i=0;i<pm.length-1;i++){if(x<=pm[i+1][0]){const f=(x-pm[i][0])/(pm[i+1][0]-pm[i][0]);return Math.exp(lerp(Math.log(R.st[pm[i][1]].P),Math.log(R.st[pm[i+1][1]].P),f))/R.P0;}}return R.st[pm[pm.length-1][1]].P/R.P0;}

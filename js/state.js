@@ -7,6 +7,10 @@ const state={
   thermalMode:'metal',   /* thermal view paints gas or metal temperature */
   cut:'quarter',flow:true,bloom:!isMobile,hover:null,
   paused:false,fadec:true,particles:isMobile?'low':'medium',
+  ann:false,             /* station labels over the scene */
+  sound:false,           /* synthesised engine sound */
+  cross:0,               /* crosswind, m/s, blowing from +z */
+  reverser:false,        /* turbofan thrust reverser deployed */
   chart:'compare',       /* compare | cycle */
 };
 const KROT=1/34;   /* visual rev/s per real rev/s (slow motion) */

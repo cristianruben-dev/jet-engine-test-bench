@@ -159,6 +159,7 @@ kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--bg-3);border:
 #chartLegend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:11.5px;color:var(--muted)}
 #chartLegend span{display:inline-flex;align-items:center;gap:5px}
 #chartLegend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+#chartLegend b{color:var(--fg);font-family:var(--font-mono);font-weight:500;font-variant-numeric:tabular-nums}
 #chartNote{margin:8px 0 0;font-size:11.5px;color:var(--muted);line-height:1.5}
 #tableBtn{margin-top:10px;align-self:flex-start}
 #chartTable{margin-top:8px;overflow-x:auto}
@@ -185,6 +186,16 @@ kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--bg-3);border:
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;font-size:12px;color:var(--muted);align-items:center}
 .keys kbd+kbd{margin-left:2px}
+
+/* ── station labels projected over the scene ── */
+#ann{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.ann{position:absolute;width:0;height:0;transition:opacity .2s}
+.ann i{position:absolute;left:-3.5px;top:-3.5px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent),0 0 0 2px rgba(0,0,0,.5)}
+.ann .box{position:absolute;left:8px;bottom:6px;white-space:nowrap;display:flex;align-items:baseline;gap:7px;background:rgba(10,13,18,.84);border:1px solid var(--line-2);border-radius:4px;padding:2px 7px 2px 6px;font-size:11px;line-height:1.3;color:var(--fg)}
+.ann.lo .box{bottom:auto;top:6px}
+.ann b{font-family:var(--font-display);font-weight:700;font-size:12.5px;color:var(--accent);letter-spacing:.04em}
+.ann em{font-style:normal;font-family:var(--font-mono);font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+@media (max-width:760px){ .ann .box{font-size:10px} .ann em{display:none} }
 
 /* ── tooltip and loading ── */
 #tip{position:absolute;z-index:5;pointer-events:none;max-width:280px;background:rgba(10,13,18,.95);border:1px solid var(--line-2);border-left:3px solid var(--accent);border-radius:var(--rs);padding:9px 11px;font-size:12.5px;line-height:1.35;box-shadow:0 10px 30px rgba(0,0,0,.55)}

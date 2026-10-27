@@ -7,6 +7,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
 import {state,KV} from '../state.js';
 import {clamp,lerp,smooth,DEG,fIdx,LUT,VIEWS} from './utils.js';
 import {profileAt} from './geometry.js';
+import {shockAngle} from './shocks.js';
 
 const TAU=0.28;                                   /* a streak is TAU seconds of travel */
 const LMAX=1.0;                                   /* longest streak (scene units) */
@@ -89,7 +90,7 @@ class Flow{
     g.setAttribute('aHead',this.aHead);g.setAttribute('aTail',this.aTail);g.setAttribute('aColor',this.aCol);g.setAttribute('aMisc',this.aMisc);g.instanceCount=n;
     this.mat=new THREE.ShaderMaterial({vertexShader:VS,fragmentShader:FS,uniforms:{uRes:{value:new THREE.Vector2(1,1)},uWidth:{value:1.3},uOpacity:{value:1}},transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.NormalBlending,premultipliedAlpha:true});
     this.mesh=new THREE.Mesh(g,this.mat);this.mesh.frustumCulled=false;this.mesh.renderOrder=3;
-    this.group=new THREE.Group();this.group.add(this.mesh);this.probe={T:0,Pr:1,V:0};this.v=[0,0,0];
+    this.group=new THREE.Group();this.group.add(this.mesh);this.probe={T:0,Pr:1,V:0};this.v=[0,0,0];this.dens=1;this.vortexOn=false;
   }
   dispose(){this.mesh.geometry.dispose();this.mat.dispose();}
   /* drawing-buffer size and pixel ratio: the streak width is 2.6 css px at the head */
@@ -103,7 +104,10 @@ class Flow{
     do{x=upstream?b.x0-Math.random()*2.5:b.x0+Math.random()*(Math.min(b.x1,cap.x+2.5)-b.x0);
       const u=Math.random();far=u>0.62;const r=far?rIn+(u-0.62)/0.38*(rFar-rIn):Math.sqrt(u/0.62)*rIn;
       const ang=(sec&&!far&&Math.random()<0.55)?(sec[0]+Math.random()*(sec[1]-sec[0]))*DEG:Math.random()*Math.PI*2;
-      y=r*Math.cos(ang)+(b.yc||0);z=r*Math.sin(ang);k++;}while(E.inside(x,y,z)&&k<10);
+      y=r*Math.cos(ang)+(b.yc||0);z=r*Math.sin(ang);
+      if(state.cross>0.5&&Math.random()<0.3){z=Math.abs(z)+rIn*0.6+Math.random()*1.2;x=b.x0+Math.random()*(Math.min(b.x1,cap.x+3)-b.x0);far=true;}   /* feed the windward side */
+      else if(this.vortexOn&&Math.random()<0.25){x=cap.x-0.15+gauss()*0.5;y=-1.88+Math.random()*1.3;z=0.12+gauss()*0.5;far=false;}         /* feed the ground vortex */
+      k++;}while(E.inside(x,y,z)&&k<10);
     const j=i*3;this.P[j]=this.Q[j]=x;this.P[j+1]=this.Q[j+1]=y;this.P[j+2]=this.Q[j+2]=z;this.S[i]=-1;this.T[i]=E.T0;this.V[i]=0;this.Pr[i]=1;this.age[i]=0;this.far[i]=far?1:0;this.wr[i]=this.wt[i]=0;
   }
   reset(E){for(let i=0;i<this.n;i++)this.spawn(i,E,false);}
@@ -114,7 +118,8 @@ class Flow{
     const inside=this.S[i]>=0,far=this.far[i]===1,hot=inside?smooth(900,1500,this.T[i]):0;
     const br=inside?1+0.5*hot:(far?0.5:0.75);
     this.col[j]=r*br;this.col[j+1]=g*br;this.col[j+2]=b*br;
-    const m=i*2;this.misc[m]=inside?1+0.25*hot:(far?0.7:0.85);this.misc[m+1]=inside?0.95:(far?0.32:0.65);
+    /* thin air at altitude draws fainter outside the engine */
+    const m=i*2;this.misc[m]=inside?1+0.25*hot:(far?0.7:0.85);this.misc[m+1]=inside?0.95:(far?0.32:0.65)*(0.45+0.55*this.dens);
   }
   /* streak from the displacement of the last step */
   write(i,dt,lut,VW){
@@ -132,17 +137,27 @@ class Flow{
     /* the captured stream tube acts as a sink of strength S (face velocity minus free stream);
        negative when the inlet spills or the compressor surges. It fades out along the body. */
     const a=cap.channel?0:cap.r,S=cap.channel?0:a*a*(E.streams[0].V[0]*k-V0)*vk/4;
-    const xEnd=E.xEnd??E.spawn.x1,xMid=(cap.x+xEnd)/2;
+    const xEnd=E.xEnd??E.spawn.x1,xMid=(cap.x+xEnd)/2;this.dens=Math.sqrt(clamp((R.rho0||1.225)/1.225,0,1));
+    /* conical shock of a spike inlet: inside the cone the air turns toward the spike's slope */
+    let shk=null;if(E.shock&&R.M>1.02){const b=shockAngle(R.M,E.shock.theta);if(b!==null)shk={x0:E.shock.x0,tanB:Math.tan(b),tanC:E.shock.tanCone};}
     /* free jet: the stream that reaches furthest out just behind the body */
     let jet=null;if(!cap.channel){let rj=0;for(const st of E.streams){if(st.jet===undefined)continue;const e=sample(st,st.B,xEnd+0.5);if(e>rj){rj=e;jet=st;}}}
     const dts=dt*ts;   /* slow-motion seconds, for the eddies */
+    /* crosswind (from +z), and on the ground with a static inlet, the floor and the ground vortex */
+    const Vc=-state.cross*k;const ground=(!cap.channel&&(R.alt||0)<60)?-1.9:null;
+    const vortex=(ground!==null&&S>0)?0.9*S*(1-smooth(0.12,0.4,V0)):0,gx=cap.x-0.15,gz=0.12;this.vortexOn=vortex>0.05;
     for(let i=0;i<n;i++){const j=i*3;let x=P[j],y=P[j+1],z=P[j+2];Q[j]=x;Q[j+1]=y;Q[j+2]=z;
       if(this.S[i]<0){
-        v[0]=V0;v[1]=0;v[2]=0;const r=Math.hypot(y,z);
+        v[0]=V0;v[1]=0;v[2]=Vc;const r=Math.hypot(y,z);
+        if(ground!==null){
+          if(y<ground+0.03){y=P[j+1]=ground+0.03;}
+          /* ground vortex: a vertical filament from the floor into the lower lip of a static inlet */
+          if(vortex>0&&y<0){const dx=x-gx,dz=z-gz,d2=dx*dx+dz*dz;const hgt=clamp((y-ground)/(-cap.r*0.7-ground),0,1);const w=vortex*(1-smooth(0.85,1.2,hgt))/(d2+0.03);v[0]-=dz*w;v[2]+=dx*w;v[1]+=0.35*vortex/(d2+0.06)*(1-smooth(0.8,1.1,hgt));}}
         if(S!==0){const wS=x<xMid?1:1-smooth(xMid,xEnd+0.5,x);
           if(wS>0){const ir=1/(r||1e-6);let ty,tz;if(x<cap.x){const rr=Math.min(r,a);ty=rr*y*ir;tz=rr*z*ir;}else{ty=a*y*ir;tz=a*z*ir;}
             /* face velocity at the plane; the far field is drawn twice as strong as the sink law to stay legible in slow motion */
             const dx=cap.x-x,dy=ty-y,dz=tz-z;const d2=dx*dx+dy*dy+dz*dz,d=Math.sqrt(d2)+1e-6;const mag=S*wS/(d2+a*a*0.25)*(1+smooth(0,1.5*a,d));v[0]+=dx/d*mag;v[1]+=dy/d*mag;v[2]+=dz/d*mag;}}
+        if(shk&&x>shk.x0&&x<cap.x+0.2){const rs=(x-shk.x0)*shk.tanB;if(r<rs){const rb=Math.max(0,profileAt(E.rBody,x));const f=clamp(1-(r-rb)/Math.max(rs-rb,1e-3),0,1);const vr=v[0]*shk.tanC*(0.4+0.6*f),ir=1/(r||1e-6);v[1]+=vr*y*ir;v[2]+=vr*z*ir;}}
         if(E.steer)E.steer(x,y,z,v,cap);else if(E.rBody)steerAnnular(E,jet,x,y,z,v,cap);
         if(jet&&x>xEnd-0.3){const vj=sample(jet,jet.V,x)*k;if(vj>V0){const e=Math.exp(-Math.pow(Math.max(0,r-sample(jet,jet.B,x))/0.45,2));v[0]+=(vj-V0)*0.3*e;}}
         v[0]+=gauss()*0.012;v[1]+=gauss()*0.012;v[2]+=gauss()*0.012;
@@ -154,21 +169,24 @@ class Flow{
           if(x>E.spawn.x1||x<E.spawn.x0-3||Math.abs(y)>4.5||Math.abs(z)>4.5||(this.age[i]>16&&Math.random()<0.03)){this.spawn(i,E,V0>0.15);this.write(i,dt,lut,VW);continue;}}
       }
       if(this.S[i]>=0){
-        const st=E.streams[this.S[i]],X=st.X;let g=this.seg[i];x=P[j];while(g<X.length-2&&x>=X[g+1])g++;while(g>0&&x<X[g])g--;this.seg[i]=g;
+        let st=E.streams[this.S[i]];x=P[j];
+        if(st.divert){const d=st.divert(x,R);if(d>=0){st=E.streams[d];this.S[i]=d;this.seg[i]=st.X.length-2;x=P[j]=st.X[st.X.length-1]-1e-3;this.wr[i]=this.wt[i]=0;}}
+        const X=st.X;let g=this.seg[i];while(g<X.length-2&&x>=X[g+1])g++;while(g>0&&x<X[g])g--;this.seg[i]=g;
         const f=clamp((x-X[g])/(X[g+1]-X[g]),0,1);let A=lerp(st.A[g],st.A[g+1],f),B=lerp(st.B[g],st.B[g+1],f);const vs=lerp(st.V[g],st.V[g+1],f)*vk;const T=this.T[i]=lerp(st.TT[g],st.TT[g+1],f);this.V[i]=Math.abs(vs);this.Pr[i]=E.pressureAt(st,x,R);
-        if(st.jet===undefined||x<st.jet){const mg=Math.min(0.03,(B-A)*0.2);B-=mg;A+=mg*0.5;}   /* keep a margin from the walls so streaks do not poke through the casing */
+        const free=(st.jet!==undefined&&x>st.jet)||(st.jetBelow!==undefined&&x<st.jetBelow);   /* in the free jet */
+        if(!free){const mg=Math.min(0.03,(B-A)*0.2);B-=mg;A+=mg*0.5;}   /* keep a margin from the walls so streaks do not poke through the casing */
         x+=vs*k*dt;
         /* mixing: eddies in the shear layer of the free jet and the flicker of the flame, as a slowly
            wandering drift (Ornstein-Uhlenbeck) so the streaks wave instead of jittering */
-        const sig=(st.jet!==undefined&&x>st.jet)?0.1+0.3*clamp(Math.abs(vs-R.V0)/500,0,1):0.07*smooth(950,1600,T);
+        const sig=free?0.1+0.3*clamp(Math.abs(vs-R.V0)/500,0,1):0.07*smooth(950,1600,T);
         if(sig>0){const lam=2.5*dts,kick=sig*Math.sqrt(2*lam);this.wr[i]+=gauss()*kick-this.wr[i]*lam;this.wt[i]+=gauss()*kick-this.wt[i]*lam;
           this.rho[i]=reflect(this.rho[i]+this.wr[i]*dts);if(st.kind==='annular')this.th[i]+=this.wt[i]*dts*1.2;else this.ze[i]=clamp(this.ze[i]+this.wt[i]*dts*0.8,-1,1);}
         else{this.wr[i]*=0.9;this.wt[i]*=0.9;}
         if(st.kind==='annular'){const r=A+this.rho[i]*(B-A);this.th[i]+=E.swirl(x)*dt;y=r*Math.cos(this.th[i]);z=r*Math.sin(this.th[i]);}
-        else{y=A+this.rho[i]*(B-A);z=this.ze[i]*lerp(st.C[g],st.C[g+1],f);}
+        else{y=A+this.rho[i]*(B-A);if(st.shock){const yf=st.A[0]+this.rho[i]*(st.B[0]-st.A[0]);y=lerp(yf,y,st.shock(x,yf,R,E));}z=this.ze[i]*lerp(st.C[g],st.C[g+1],f);}   /* channel air keeps its height until it crosses the shock */
         P[j]=x;P[j+1]=y;P[j+2]=z;
         if(x>=X[X.length-1]){if(st.next)st.next(i,this,E);else this.spawn(i,E,true);}
-        else if(x<X[0]-0.3)this.spawn(i,E,true);
+        else if(x<X[0]-0.3){if(st.release){this.S[i]=-1;this.far[i]=0;this.age[i]=0;this.T[i]=R.T0;}else this.spawn(i,E,true);}
       }
       this.write(i,dt,lut,VW);
     }

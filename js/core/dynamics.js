@@ -8,7 +8,7 @@ const lag=(x,target,dt,tau)=>x+(target-x)*(1-Math.exp(-dt/tau));
 class Dynamics{
   constructor(){this.reset('turbofan',0.75);}
   reset(id,t){
-    this.id=id;this.mode='run';this.fuelOn=true;this.surge=0;this.unstart=0;this.limiting=false;this.event=null;this.eventT=0;this.lit=true;this.starter=false;
+    this.id=id;this.mode='run';this.fuelOn=true;this.surge=0;this.unstart=0;this.limiting=false;this.event=null;this.eventT=0;this.lit=true;this.starter=false;this.rev=0;this.revCmd=0;
     const s=STEADY[id](t);this.N1=s.N1??0;this.N2=s.N2??0;this.N=s.N??0;this.fuel=s.fuel??0;this.ab=s.ab??0;
   }
   get turbo(){return this.id==='turbofan'||this.id==='turbojet';}
@@ -36,12 +36,12 @@ class Dynamics{
     const t=state.throttle,M=state.mach,alt=state.alt,fadec=state.fadec;
     this.eventT=Math.max(0,this.eventT-dt);if(this.eventT<=0)this.event=null;
     this.surge=Math.max(0,this.surge-dt/1.4);this.unstart=Math.max(0,this.unstart-dt/2.5);
-    if(this.id==='turbofan')return this.stepTurbofan(dt,t,M,alt,fadec);
+    if(this.id==='turbofan')return this.stepTurbofan(dt,t,M,alt,fadec,state);
     if(this.id==='turbojet')return this.stepTurbojet(dt,t,M,alt,fadec);
     if(this.id==='scramjet'&&Rprev&&this.fuelOn&&Rprev.burn>0.05&&Rprev.chokeMargin<0&&this.unstart<0.05){this.unstart=1;this.note('UNSTART: el calor añadido frena el flujo hasta M 1, la toma expulsa el choque y pierde la compresión. Reduce el combustible','off',4);}
     return {t,M,alt,fuelOn:this.fuelOn,unstart:this.unstart};
   }
-  stepTurbofan(dt,t,M,alt,fadec){
+  stepTurbofan(dt,t,M,alt,fadec,state){
     const idle=0.1;let cmd;
     if(this.mode==='off')cmd=0;
     else if(this.mode==='start'){cmd=this.N2>=0.18?idle:0;if(this.N2>=0.6){this.mode='run';this.starter=false;this.note('Ralentí estable: arranque completado','ok',4);}}
@@ -57,7 +57,9 @@ class Dynamics{
     if(this.starter){this.N2=Math.min(this.N2+0.05*dt,0.62);if(this.N2>0.5&&this.lit)this.starter=false;}
     const t1=clamp((this.N2-0.62)/0.38,0,1);const N1ss=this.lit?Math.max(0.22+0.78*t1-0.1*this.surge,wm1):wm1;
     this.N1=lag(this.N1,N1ss,dt,this.lit?3.2:9);
-    return {t,M,alt,N1:this.N1,N2:this.N2,fuel:this.fuel,lit:this.lit,surge:this.surge};
+    const revCmd=state.reverser?1:0;if(revCmd!==this.revCmd){this.revCmd=revCmd;this.note(revCmd?'Inversor: el manguito retrocede y las compuertas cierran el bypass; el aire del fan sale hacia delante':'Inversor replegado','warn',4);}
+    this.rev=lag(this.rev,revCmd,dt,0.8);
+    return {t,M,alt,N1:this.N1,N2:this.N2,fuel:this.fuel,lit:this.lit,surge:this.surge,rev:this.rev};
   }
   stepTurbojet(dt,t,M,alt,fadec){
     const idle=0.3;let cmd;
@@ -76,6 +78,12 @@ class Dynamics{
     if(abCmd>0.05&&this.ab<0.03)this.note('Encendido del postquemador: chorro de combustible sobre los estabilizadores y apertura de la tobera','warn',3);
     this.ab=lag(this.ab,abCmd,dt,0.6);
     return {t,M,alt,N:this.N,fuel:this.fuel,ab:this.ab,lit:this.lit,surge:this.surge};
+  }
+  /* compressor map state: speed, design pressure ratio, idle speed and the fuel excess over the steady
+     schedule (the acceleration limiter holds it below the surge line; without it the point crosses) */
+  map(){
+    if(!this.turbo)return null;const tf=this.id==='turbofan';const N=tf?this.N2:this.N,n0=tf?0.62:0.63,idle=tf?0.1:0.3,span=tf?0.9:0.7;
+    const fuelSS=idle+span*clamp((N-n0)/(1-n0),0,1);return {N,n0,PRd:tf?11.5:13.2,excess:(this.fuel-fuelSS)/fuelSS,surge:this.surge,lit:this.lit,hp:tf};
   }
   /* status and warnings that depend on the transient state */
   annotate(R,state){

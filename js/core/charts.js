@@ -64,4 +64,58 @@ function drawCycle(canvas,R,id){
   return pts;
 }
 
-export {SERIES,RANGE,sweep,drawComparison,drawCycle,valuesAt};
+/* ── live strip chart: the channels of each engine over the last minute, each on its own scale ── */
+const TRACES={
+  turbofan:[{k:'N1',u:'%',r:[0,110],f:R=>R.N1*100,c:'#3987e5'},{k:'N2',u:'%',r:[0,110],f:R=>R.N2*100,c:'#8fb8f0'},{k:'EGT',u:'°C',r:[0,1100],f:R=>R.Tt5-273.15,c:'#d95926'},{k:'Empuje',u:'kN',r:[0,350],f:R=>R.F/1000,c:'#58d68d'},{k:'Combustible',u:'kg/s',r:[0,4],f:R=>R.Wf,c:'#c98500'}],
+  turbojet:[{k:'Régimen',u:'%',r:[0,110],f:R=>R.N*100,c:'#3987e5'},{k:'EGT',u:'°C',r:[0,1000],f:R=>R.Tt5-273.15,c:'#d95926'},{k:'Empuje',u:'kN',r:[0,80],f:R=>R.F/1000,c:'#58d68d'},{k:'Combustible',u:'kg/s',r:[0,5],f:R=>R.Wf,c:'#c98500'},{k:'Postquemador',u:'%',r:[0,100],f:R=>R.ab*100,c:'#e38bd2'}],
+  ramjet:[{k:'Mach',u:'',r:[0,6],f:R=>R.M,c:'#3987e5'},{k:'Cámara',u:'°C',r:[0,2400],f:R=>R.Tt4-273.15,c:'#d95926'},{k:'Empuje',u:'kN',r:[0,160],f:R=>R.F/1000,c:'#58d68d'},{k:'Combustible',u:'kg/s',r:[0,10],f:R=>R.Wf,c:'#c98500'}],
+  scramjet:[{k:'Mach',u:'',r:[0,10],f:R=>R.M,c:'#3987e5'},{k:'Cámara',u:'°C',r:[0,3000],f:R=>R.T4s-273.15,c:'#d95926'},{k:'Empuje',u:'kN',r:[0,40],f:R=>R.F/1000,c:'#58d68d'},{k:'Hidrógeno',u:'kg/s',r:[0,1],f:R=>R.Wf,c:'#c98500'},{k:'Margen',u:'%',r:[-50,100],f:R=>R.chokeMargin>=0?R.chokeMargin*100:NaN,c:'#e38bd2'}],
+};
+const SPAN=60,RATE=10;   /* seconds kept, samples per second */
+class History{
+  constructor(id){this.tr=TRACES[id];this.m=this.tr.length;this.cap=SPAN*RATE+10;this.t=new Float32Array(this.cap);this.v=new Float32Array(this.cap*this.m);this.ev=new Uint8Array(this.cap);this.n=0;this.head=0;this.clock=0;this.trail=[];}
+  push(R,dyn,dt){
+    this.clock+=dt;const i=this.head;this.t[i]=this.clock;for(let k=0;k<this.m;k++)this.v[i*this.m+k]=this.tr[k].f(R);this.ev[i]=(dyn.surge>0.5||dyn.unstart>0.5)?1:0;
+    this.head=(i+1)%this.cap;this.n=Math.min(this.n+1,this.cap);
+    const mp=dyn.map();if(mp){const p=mapPoint(mp);this.trail.push(p);if(this.trail.length>150)this.trail.shift();}
+  }
+  at(j){return (this.head-this.n+j+this.cap)%this.cap;}
+}
+function drawHistory(canvas,hist){
+  const {g,w,h}=prep(canvas),col=ink();const x0=34,x1=w-10,y0=h-20,y1=14;const now=hist.clock;
+  const xt=[];for(let s=-SPAN;s<=0;s+=15)xt.push([s,(s+SPAN)/SPAN]);
+  axes(g,x0,y0,x1,y1,xt,[[0,0],[50,0.5],[100,1]],col,v=>v===0?'ahora':fmt(v)+' s',v=>fmt(v)+' %');
+  const px=t=>x0+(x1-x0)*clamp((t-now+SPAN)/SPAN,0,1),py=f=>y0-(y0-y1)*clamp(f,0,1);
+  g.lineWidth=1.6;g.lineJoin='round';g.lineCap='round';
+  for(let k=0;k<hist.m;k++){const tr=hist.tr[k];g.strokeStyle=tr.c;g.beginPath();let pen=false;
+    for(let j=0;j<hist.n;j++){const i=hist.at(j);const t=hist.t[i];if(t<now-SPAN)continue;const v=hist.v[i*hist.m+k];if(!Number.isFinite(v)){pen=false;continue;}const x=px(t),y=py((v-tr.r[0])/(tr.r[1]-tr.r[0]));pen?g.lineTo(x,y):g.moveTo(x,y);pen=true;}
+    g.stroke();}
+  g.strokeStyle='#ff5b2e';g.lineWidth=2;
+  for(let j=0;j<hist.n;j++){const i=hist.at(j);if(!hist.ev[i]||hist.t[i]<now-SPAN)continue;const x=px(hist.t[i]);g.beginPath();g.moveTo(x,y1);g.lineTo(x,y1+8);g.stroke();}
+  const last=hist.n?hist.at(hist.n-1):-1;
+  return hist.tr.map((tr,k)=>{const v=last>=0?hist.v[last*hist.m+k]:NaN;return {k:tr.k,c:tr.c,text:Number.isFinite(v)?fmt(v,tr.u==='kg/s'?2:0)+(tr.u?' '+tr.u:''):'—'};});
+}
+
+/* ── compressor map: corrected flow against pressure ratio, with the surge line, the steady operating
+   line, constant-speed lines, the trail of the last seconds and the live operating point ── */
+const xN=N=>100*(0.08+0.92*Math.pow(Math.max(N,0),1.3)),PRop=(N,PRd)=>1+(PRd-1)*N*N,PRs=(N,PRd)=>PRop(N,PRd)*(1.1+0.12*N);
+function mapPoint(m){const N=m.N,x=xN(N)*(1-0.45*m.surge);const PR=Math.max(1,PRop(N,m.PRd)*(1+(PRs(N,m.PRd)/PRop(N,m.PRd)-1)*clamp(m.excess,-1,1.3)/0.43)*(1-0.5*m.surge));return [x,PR];}
+function drawMap(canvas,m,trail){
+  const {g,w,h}=prep(canvas),col=ink();const x0=40,x1=w-12,y0=h-20,y1=16;const xmax=115,PRmax=m.PRd*1.32;
+  const px=v=>x0+(x1-x0)*v/xmax,py=PR=>y0-(y0-y1)*clamp((PR-1)/(PRmax-1),0,1.02);
+  const yt=[];for(let p=1;p<=PRmax;p+=m.PRd>12?3:2)yt.push([p,(p-1)/(PRmax-1)]);const xt=[];for(let v=0;v<=100;v+=25)xt.push([v,v/xmax]);
+  axes(g,x0,y0,x1,y1,xt,yt,col,v=>v+' %',v=>fmt(v)+':1');
+  g.fillStyle=col.muted;g.textAlign='right';g.textBaseline='bottom';g.fillText('caudal corregido',x1,y0-3);
+  /* speed lines */
+  g.strokeStyle=col.grid;g.lineWidth=1;g.fillStyle=col.muted;g.textAlign='center';g.textBaseline='bottom';
+  for(const N of [0.5,0.6,0.7,0.8,0.9,1.0]){g.beginPath();for(let s=0;s<=1;s+=0.1){const x=px(xN(N)*(1.05-0.08*s*s)),y=py(PRop(N,m.PRd)*0.78+(PRs(N,m.PRd)-PRop(N,m.PRd)*0.78)*s);s?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();g.fillText(fmt(N*100)+' %',px(xN(N)*0.97),py(PRs(N,m.PRd))-3);}
+  const line=(fn,dash,color,label,Nl,above)=>{g.setLineDash(dash);g.strokeStyle=color;g.lineWidth=1.8;g.beginPath();for(let N=0.35;N<=1.05;N+=0.025){const [x,p]=fn(N);N>0.35?g.lineTo(px(x),py(p)):g.moveTo(px(x),py(p));}g.stroke();g.setLineDash([]);const [lx,lp]=fn(Nl);g.fillStyle=color;g.textAlign=above?'right':'left';g.textBaseline=above?'bottom':'top';g.fillText(label,px(lx)+(above?-4:6),py(lp)+(above?-4:4));};
+  line(N=>[xN(N)*0.98,PRs(N,m.PRd)],[5,4],'#ff5b2e','línea de bombeo',0.62,true);
+  line(N=>[xN(N),PRop(N,m.PRd)],[],'#ffb547','línea de funcionamiento',0.55,false);
+  g.lineWidth=2;g.lineJoin='round';
+  for(let j=1;j<trail.length;j++){g.strokeStyle=`rgba(95,203,255,${0.08+0.6*j/trail.length})`;g.beginPath();g.moveTo(px(trail[j-1][0]),py(trail[j-1][1]));g.lineTo(px(trail[j][0]),py(trail[j][1]));g.stroke();}
+  const [cx,cp]=mapPoint(m);g.fillStyle=col.surface;g.beginPath();g.arc(px(cx),py(cp),7,0,7);g.fill();g.fillStyle=m.surge>0.3?'#ff5b2e':'#5fcbff';g.beginPath();g.arc(px(cx),py(cp),4.5,0,7);g.fill();
+  return (PRs(m.N,m.PRd)/cp-1)*100;
+}
+
+export {SERIES,RANGE,TRACES,History,sweep,drawComparison,drawCycle,drawHistory,drawMap,mapPoint,valuesAt};

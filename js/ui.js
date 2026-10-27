@@ -8,17 +8,21 @@ import {cutPlanes,inCut} from './core/cuts.js';
 import {Flow} from './core/flow.js';
 import {Dynamics} from './core/dynamics.js';
 import {ENGINES} from './engines/index.js';
-import {SERIES,drawComparison,drawCycle,valuesAt} from './core/charts.js';
+import {SERIES,History,drawComparison,drawCycle,drawHistory,drawMap,valuesAt} from './core/charts.js';
+import {Sound} from './core/sound.js';
 
-export const ui={thr:$('#throttle'),wind:$('#wind'),alt:$('#alt'),ts:$('#tscale'),thrOut:$('#thrOut'),windOut:$('#windOut'),altOut:$('#altOut'),tsOut:$('#tsOut'),engBtn:$('#engBtn'),fadec:$('#fadec'),status:$('#status'),statusText:$('#statusText'),warnings:$('#warnings'),readouts:$('#readouts'),temps:$('#temps'),blurb:$('#blurb'),legend:$('#legend'),tip:$('#tip'),panel:$('#panel'),body:$('#panelBody'),hud:$('#hud'),chart:$('#chart'),chartTip:$('#chartTip'),chartLegend:$('#chartLegend'),chartNote:$('#chartNote'),chartTable:$('#chartTable'),presets:$('#presets'),tour:$('#tour'),hint:$('#hint'),pause:$('#pauseBtn'),app:$('#app')};
+export const sound=new Sound();
+export const ui={ann:$('#ann'),cross:$('#cross'),crossOut:$('#crossOut'),rev:$('#revBtn'),thr:$('#throttle'),wind:$('#wind'),alt:$('#alt'),ts:$('#tscale'),thrOut:$('#thrOut'),windOut:$('#windOut'),altOut:$('#altOut'),tsOut:$('#tsOut'),engBtn:$('#engBtn'),fadec:$('#fadec'),status:$('#status'),statusText:$('#statusText'),warnings:$('#warnings'),readouts:$('#readouts'),temps:$('#temps'),blurb:$('#blurb'),legend:$('#legend'),tip:$('#tip'),panel:$('#panel'),body:$('#panelBody'),hud:$('#hud'),chart:$('#chart'),chartTip:$('#chartTip'),chartLegend:$('#chartLegend'),chartNote:$('#chartNote'),chartTable:$('#chartTable'),presets:$('#presets'),tour:$('#tour'),hint:$('#hint'),pause:$('#pauseBtn'),app:$('#app')};
 /* active engine, its catalog entry, the dynamics and the latest thermodynamic result */
-export const app={engine:null,def:null,R:null,a0:340,flow:null,dyn:new Dynamics(),roCells:[],tRows:[],hudCells:[],timers:[],tourI:-1,chartHover:null,chartData:null,tableOpen:false,pane:'inst',preset:null};
+export const app={engine:null,def:null,R:null,a0:340,flow:null,dyn:new Dynamics(),roCells:[],tRows:[],hudCells:[],timers:[],tourI:-1,chartHover:null,chartData:null,tableOpen:false,pane:'inst',preset:null,hist:null,annEls:[]};
 
 const VIEW_KEYS=['mat','thermal','pressure','velocity'],CUT_KEYS=['none','quarter','half'];
 const mobileQuery=matchMedia('(max-width:760px)');
 /* filled portion of a range input, read by the track gradient */
 const fill=el=>{el.style.setProperty('--p',((el.value-el.min)/(el.max-el.min)*100||0)+'%');};
 function setFlow(level){if(app.flow){scene.remove(app.flow.group);app.flow.dispose();}app.flow=new Flow(PARTICLES[level]||PARTICLES.medium);app.flow.group.visible=state.flow;scene.add(app.flow.group);if(app.engine)app.flow.reset(app.engine);}
+/* particle level from the settings or from the automatic quality drop */
+export function setParticles(level){state.particles=level;$('#particles').value=level;setFlow(level);}
 const metalOf=(R,key,cool)=>{const T=R.st[key].T;const Tc=R.Tcool??R.T0;return cool&&T>Tc?T-cool*(T-Tc):T;};
 const cell=(cls,k)=>{const d=document.createElement('div');d.className=cls;d.innerHTML=`<span class="k">${k}</span><span class="v"></span>`;return d;};
 
@@ -38,19 +42,33 @@ function buildPanel(){
 }
 export function buildLegend(){const VW=VIEWS[state.view];const lut=LUT[VW.lut];ui.legend.querySelector('.lbl').textContent=(VW.short||VW.label)+(state.view==='thermal'?(state.thermalMode==='metal'?' del metal':' del gas'):'');ui.legend.querySelector('.bar').style.background=cssGradient(lut);const ticks=ui.legend.querySelector('.ticks');ticks.innerHTML='';for(const [f,l] of VW.ticks){const s=document.createElement('span');s.style.left=(f*100)+'%';s.textContent=l;ticks.appendChild(s);}}
 function engineButton(){const d=app.dyn;const on=d.running;ui.engBtn.textContent=on?'Cortar combustible':(d.turbo?'Arrancar':'Inyectar combustible');ui.engBtn.className='btn '+(on?'danger':'go');}
+
+/* station labels: anchors projected every frame, values refreshed with the panel */
+const annV=new THREE.Vector3();
+function buildAnn(){ui.ann.innerHTML='';app.annEls=[];let k=0;for(const s of app.engine.stations||[]){const d=document.createElement('div');d.className='ann'+(k++%2?' lo':'');d.innerHTML=`<i></i><span class="box"><b>${s[1]}</b><span>${s[2]}</span><em></em></span>`;ui.ann.appendChild(d);const p=s.length>5?[s[3],s[4],s[5]]:[s[3],s[4]*Math.cos(0.75),s[4]*Math.sin(0.75)];app.annEls.push({key:s[0],el:d,em:d.querySelector('em'),p});}}
+export function placeAnn(){if(!state.ann)return;const rect=canvas.getBoundingClientRect(),box=ui.app.getBoundingClientRect(),stage=$('#stage').getBoundingClientRect();for(const a of app.annEls){annV.set(a.p[0],a.p[1],a.p[2]).project(camera);const sx=rect.left+(annV.x+1)/2*rect.width,sy=rect.top+(1-annV.y)/2*rect.height;const vis=annV.z<1&&sx>stage.left&&sx<stage.right-40&&sy>stage.top&&sy<stage.bottom;a.el.style.opacity=vis?1:0;if(!vis)continue;a.el.style.left=(sx-box.left)+'px';a.el.style.top=(sy-box.top)+'px';}}
+function annValues(){if(!state.ann)return;const {R}=app;for(const a of app.annEls){const g=R.st[a.key];if(g)a.em.textContent=`${fmt(g.T-273.15)} °C · ${fmt(g.P/R.P0,1)}× · ${fmt(g.V)} m/s`;}}
+export function applyAnn(){ui.ann.hidden=!state.ann;$('#annBtn').setAttribute('aria-pressed',String(state.ann));if(state.ann){placeAnn();annValues();}scheduleHash();}
+function applySound(){sound.enable(state.sound);const b=$('#soundBtn');b.setAttribute('aria-pressed',String(state.sound));b.textContent=state.sound?'🔊':'🔈';}
 const roText=r=>r[1]+(r[2]?`<small>${r[2]}</small>`:'');
 export function updatePanel(){
   const {engine,R}=app;const lut=LUT[state.view==='thermal'?'iron':'flow'];
   const ro=engine.readouts(R);for(let i=0;i<app.roCells.length;i++)app.roCells[i].innerHTML=roText(ro[i]);
   for(const h of app.hudCells)h.v.innerHTML=roText(ro[h.i]);
   for(let i=0;i<app.tRows.length;i++){const [,key,cool]=engine.table[i];const Tg=R.st[key].T,Tm=metalOf(R,key,cool);const row=app.tRows[i];row.chip.style.background=cssLUT(tFrac(Tg),lut);row.t.innerHTML=fmt(Tg-273.15)+' °C'+(cool?`<small>metal ${fmt(Tm-273.15)}</small>`:'');row.bar.style.width=(tFrac(Tg)*100)+'%';row.bar.style.background=cssLUT(tFrac(Tg),lut);}
-  ui.status.className=R.level;ui.statusText.textContent=R.status;
+  ui.status.className=R.level;ui.statusText.textContent=R.status;annValues();
   ui.warnings.innerHTML=R.warnings.map(([lv,t])=>`<span class="wchip ${lv}">${t}</span>`).join('');
   ui.windOut.textContent=`M ${fmt(state.mach,2)} · ${fmt(R.V0*3.6)} km/h`;ui.altOut.textContent=`${fmt(state.alt)} m · ${fmt(R.T0-273.15)} °C`;
   engineButton();if(app.pane==='charts')drawChart();
 }
+/* 10 Hz sample of the instruments for the strip chart and the compressor-map trail */
+export function record(R,dt){app.hist.push(R,app.dyn,dt);}
 function drawChart(){
-  const {R}=app;
+  const {R}=app;$('#tableBtn').hidden=state.chart==='hist'||state.chart==='map';if($('#tableBtn').hidden)ui.chartTable.hidden=true;
+  if(state.chart==='hist'){const vals=drawHistory(ui.chart,app.hist);ui.chartLegend.hidden=false;ui.chartLegend.innerHTML=vals.map(v=>`<span><i style="background:${v.c}"></i>${v.k} <b>${v.text}</b></span>`).join('');ui.chartTip.hidden=true;
+    ui.chartNote.textContent='Últimos 60 s, cada canal sobre su propia escala (0–100 % del rango). Las marcas rojas señalan bombeo o unstart. Arranca, corta, acelera sin limitador y mira cómo responde cada instrumento.';return;}
+  if(state.chart==='map'){const m=app.dyn.map();if(!m)return;const sm=drawMap(ui.chart,m,app.hist.trail);ui.chartLegend.hidden=true;ui.chartTip.hidden=true;
+    ui.chartNote.textContent=`Mapa del compresor${m.hp?' de alta (N2)':''}: caudal corregido frente a relación de presiones, con líneas de régimen constante. En régimen estable el punto va por la línea de funcionamiento; al acelerar, el exceso de combustible sube la presión a caudal casi igual y lo acerca a la línea de bombeo, que el limitador no deja cruzar. Margen de bombeo ahora: ${fmt(Math.max(-99,sm))} %.`;return;}
   if(state.chart==='compare'){app.chartData=drawComparison(ui.chart,state.alt,{id:state.engine,M:state.mach,Fsp:R.Fsp,TSFC:R.TSFC*1e6},app.chartHover);ui.chartLegend.hidden=false;
     ui.chartNote.textContent=`Gas a fondo, a ${fmt(state.alt)} m para los cuatro. El punto marca el régimen actual. Empuje por kg/s de aire y combustible por kN y segundo: por eso el turbofan gana en crucero y el estatorreactor solo existe a partir de M 1.`;
     if(app.chartHover!==null){const vals=valuesAt(app.chartData,app.chartHover);ui.chartTip.hidden=false;ui.chartTip.innerHTML=`<b>M ${fmt(app.chartHover,1)}</b><br>`+vals.map(v=>`<span class="k" style="background:${v.color}"></span>${v.label}: ${v.Fsp!==undefined?fmt(v.Fsp)+' N·s/kg · '+fmt(v.TSFC)+' g/kN·s':'fuera de rango'}`).join('<br>');}else ui.chartTip.hidden=true;}
@@ -63,32 +81,48 @@ function fillTable(){
   else{html='<table><thead><tr><th>Estación</th><th>T total K</th><th>P / P₀</th><th>Velocidad m/s</th></tr></thead><tbody>'+R.cycle.map(([n,k])=>`<tr><td>${n} · ${k}</td><td>${fmt(R.st[k].T)}</td><td>${fmt(R.st[k].P/R.P0,1)}</td><td>${fmt(R.st[k].V)}</td></tr>`).join('')+'</tbody></table>';}
   ui.chartTable.innerHTML=html;
 }
-export function applyView(){for(const p of app.engine.parts)p.mesh.material=state.view==='mat'?p.matN:p.matT;grid.material.opacity=state.view==='mat'?0.7:0.35;document.querySelectorAll('#viewMode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===state.view));$('#thermalMode').hidden=state.view!=='thermal';document.querySelectorAll('#thermalMode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===state.thermalMode));buildLegend();}
-export function applyCut(){app.engine.setCut(state.cut);document.querySelectorAll('#cutMode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===state.cut));}
-function setSliders(){ui.wind.value=state.mach;ui.thr.value=Math.round(state.throttle*100);ui.alt.value=state.alt;ui.ts.value=state.tscale;ui.fadec.checked=state.fadec;ui.thrOut.textContent=`${Math.round(state.throttle*100)} %`;ui.tsOut.textContent=`×${fmt(state.tscale,2)}`;ui.windOut.textContent=`M ${fmt(state.mach,2)} · ${fmt(state.mach*app.a0*3.6)} km/h`;ui.altOut.textContent=`${fmt(state.alt)} m`;[ui.wind,ui.thr,ui.alt,ui.ts].forEach(fill);}
+export function applyView(){for(const p of app.engine.parts)p.mesh.material=state.view==='mat'?p.matN:p.matT;grid.material.opacity=state.view==='mat'?0.7:0.35;document.querySelectorAll('#viewMode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===state.view));$('#thermalMode').hidden=state.view!=='thermal';document.querySelectorAll('#thermalMode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===state.thermalMode));buildLegend();scheduleHash();}
+export function applyCut(){app.engine.setCut(state.cut);document.querySelectorAll('#cutMode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===state.cut));scheduleHash();}
+function setSliders(){ui.wind.value=state.mach;ui.thr.value=Math.round(state.throttle*100);ui.alt.value=state.alt;ui.cross.value=state.cross;ui.ts.value=state.tscale;ui.fadec.checked=state.fadec;ui.thrOut.textContent=`${Math.round(state.throttle*100)} %`;ui.tsOut.textContent=`×${fmt(state.tscale,2)}`;ui.windOut.textContent=`M ${fmt(state.mach,2)} · ${fmt(state.mach*app.a0*3.6)} km/h`;ui.altOut.textContent=`${fmt(state.alt)} m`;ui.crossOut.textContent=`${fmt(state.cross)} m/s`;[ui.wind,ui.thr,ui.alt,ui.cross,ui.ts].forEach(fill);}
+function applyRev(){ui.rev.hidden=state.engine!=='turbofan';ui.rev.setAttribute('aria-pressed',String(state.reverser));scheduleHash();}
 function setPause(p){state.paused=p;ui.pause.setAttribute('aria-pressed',String(p));ui.pause.textContent=p?'▶':'⏸';ui.pause.setAttribute('aria-label',p?'Reanudar':'Pausa');ui.pause.title=p?'Reanudar (espacio)':'Pausa (espacio)';}
+function setChart(ch){state.chart=ch;document.querySelectorAll('#chartMode button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.ch===ch)));app.chartHover=null;if(app.pane==='charts')drawChart();}
 function setPane(name){app.pane=name;document.querySelectorAll('#ptabs button').forEach(b=>{const on=b.dataset.p===name;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;});document.querySelectorAll('#panelBody .pane').forEach(p=>{p.hidden=p.dataset.pane!==name;});ui.body.scrollTop=0;if(name==='charts')drawChart();}
 function markPreset(b){document.querySelectorAll('.preset').forEach(x=>x.removeAttribute('aria-current'));if(b)b.setAttribute('aria-current','true');app.preset=b||null;}
 export function loadEngine(id){
   for(const t of app.timers)clearTimeout(t);app.timers=[];closeTour();
   if(app.engine){scene.remove(app.engine.group);app.engine.dispose();}
-  state.engine=id;const def=app.def=ENGINES[id];Object.assign(state,def.defaults);state.hover=null;state.highlight=null;state.fadec=true;ui.tip.hidden=true;
+  state.engine=id;const def=app.def=ENGINES[id];Object.assign(state,def.defaults);state.hover=null;state.highlight=null;state.fadec=true;state.cross=0;state.reverser=false;applyRev();ui.tip.hidden=true;
   const engine=app.engine=def.build();scene.add(engine.group);app.a0=def.thermo({...def.defaults,t:0,M:1,alt:state.alt,N1:0,N2:0,N:0,fuel:0}).V0;
   ui.wind.max=def.machMax;ui.wind.step=def.machMax>3?0.05:0.01;ui.alt.max=def.altMax;setSliders();
   app.dyn.reset(id,state.throttle);
   app.R=def.thermo(app.dyn.step(0,state,null));app.dyn.annotate(app.R,state);
-  applyCut();applyView();
+  applyCut();applyView();app.hist=new History(id);buildAnn();applyAnn();
+  $('#chartMode button[data-ch=map]').hidden=!app.dyn.turbo;if(state.chart==='map'&&!app.dyn.turbo)setChart('hist');
   camera.position.set(...engine.cam.pos);controls.target.set(...engine.cam.target);controls.update();
   if(!app.flow)setFlow(state.particles);else app.flow.reset(engine);
   buildPanel();updatePanel();ui.blurb.innerHTML=def.blurb;markPreset(null);
   document.querySelectorAll('#tabs button').forEach(b=>{const on=b.dataset.engine===id;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;});
-  if(app.pane==='charts')drawChart();
+  if(app.pane==='charts')drawChart();scheduleHash();
+}
+
+/* shareable state in the URL hash: engine, throttle, speed, altitude, view, cut and camera */
+let hashTimer=0;
+function hashOf(){const p=new URLSearchParams();p.set('e',state.engine);p.set('t',String(Math.round(state.throttle*100)));p.set('m',state.mach.toFixed(2));p.set('a',String(Math.round(state.alt)));if(state.view!=='mat')p.set('v',state.view);if(state.view==='thermal')p.set('tm',state.thermalMode);if(state.cut!=='quarter')p.set('c',state.cut);if(state.ann)p.set('ann','1');if(state.cross>0)p.set('x',String(state.cross));if(state.reverser)p.set('r','1');const c=camera.position,t=controls.target;p.set('cam',[c.x,c.y,c.z,t.x,t.y,t.z].map(v=>v.toFixed(2)).join(','));return p.toString();}
+export function scheduleHash(ms=500){clearTimeout(hashTimer);hashTimer=setTimeout(()=>history.replaceState(null,'','#'+hashOf()),ms);}
+export function applyHash(){
+  const h=location.hash.slice(1);if(!h)return false;const p=new URLSearchParams(h);const e=p.get('e');loadEngine(ENGINES[e]?e:'turbofan');const def=app.def;
+  const num=(k,lo,hi)=>{const v=parseFloat(p.get(k));return Number.isFinite(v)?clamp(v,lo,hi):null;};
+  const t=num('t',0,100);if(t!==null)state.throttle=t/100;const m=num('m',0,def.machMax);if(m!==null)state.mach=m;const a=num('a',0,def.altMax);if(a!==null)state.alt=a;const x=num('x',0,20);if(x!==null)state.cross=x;state.reverser=p.get('r')==='1'&&state.engine==='turbofan';applyRev();
+  const v=p.get('v');if(VIEW_KEYS.includes(v))state.view=v;const tm=p.get('tm');if(tm==='gas'||tm==='metal')state.thermalMode=tm;const c=p.get('c');if(CUT_KEYS.includes(c))state.cut=c;state.ann=p.get('ann')==='1';applyAnn();
+  const cam=(p.get('cam')||'').split(',').map(parseFloat);if(cam.length===6&&cam.every(Number.isFinite)){camera.position.set(cam[0],cam[1],cam[2]);controls.target.set(cam[3],cam[4],cam[5]);controls.update();}
+  setSliders();app.dyn.reset(state.engine,state.throttle);app.R=def.thermo(app.dyn.step(0,state,null));app.dyn.annotate(app.R,state);applyView();applyCut();updatePanel();return true;
 }
 
 /* scenario presets */
 function runPreset(p,btn){
   for(const t of app.timers)clearTimeout(t);app.timers=[];
-  const api={set(f){if(f.throttle!==undefined)state.throttle=f.throttle;if(f.mach!==undefined)state.mach=Math.min(f.mach,app.def.machMax);if(f.alt!==undefined)state.alt=Math.min(f.alt,app.def.altMax);if(f.fadec!==undefined)state.fadec=f.fadec;if(f.view!==undefined){state.view=f.view;applyView();}if(f.cut!==undefined){state.cut=f.cut;applyCut();}setSliders();},
+  const api={set(f){if(f.throttle!==undefined)state.throttle=f.throttle;if(f.mach!==undefined)state.mach=Math.min(f.mach,app.def.machMax);if(f.alt!==undefined)state.alt=Math.min(f.alt,app.def.altMax);if(f.fadec!==undefined)state.fadec=f.fadec;if(f.cross!==undefined)state.cross=f.cross;state.reverser=!!f.reverser;applyRev();if(f.view!==undefined){state.view=f.view;applyView();}if(f.cut!==undefined){state.cut=f.cut;applyCut();}setSliders();},
     start:()=>app.dyn.start(),cut:()=>app.dyn.cut(),stop:()=>app.dyn.stop(),after:(ms,fn)=>app.timers.push(setTimeout(fn,ms))};
   setPause(false);markPreset(btn);
   p.run(api);engineButton();
@@ -135,17 +169,22 @@ export function initUI(){
   document.querySelectorAll('#viewMode button').forEach(b=>b.addEventListener('click',()=>{state.view=b.dataset.v;applyView();}));
   document.querySelectorAll('#thermalMode button').forEach(b=>b.addEventListener('click',()=>{state.thermalMode=b.dataset.m;applyView();}));
   document.querySelectorAll('#cutMode button').forEach(b=>b.addEventListener('click',()=>{state.cut=b.dataset.c;applyCut();}));
-  document.querySelectorAll('#camMode button').forEach(b=>b.addEventListener('click',()=>{const v=app.engine.views()[b.dataset.cam];if(v)flyTo(v.pos,v.target,1.0);}));
-  document.querySelectorAll('#chartMode button').forEach(b=>b.addEventListener('click',()=>{state.chart=b.dataset.ch;document.querySelectorAll('#chartMode button').forEach(x=>x.setAttribute('aria-pressed',x===b));app.chartHover=null;drawChart();}));
-  const manual=()=>markPreset(null);
+  document.querySelectorAll('#camMode button').forEach(b=>b.addEventListener('click',()=>{const v=app.engine.views()[b.dataset.cam];if(v){flyTo(v.pos,v.target,1.0);scheduleHash(1300);}}));
+  document.querySelectorAll('#chartMode button').forEach(b=>b.addEventListener('click',()=>setChart(b.dataset.ch)));
+  const manual=()=>{markPreset(null);scheduleHash();};
+  controls.addEventListener('end',()=>scheduleHash());window.addEventListener('hashchange',()=>applyHash());
   ui.thr.addEventListener('input',()=>{state.throttle=ui.thr.value/100;ui.thrOut.textContent=`${ui.thr.value} %`;fill(ui.thr);manual();});
   ui.wind.addEventListener('input',()=>{state.mach=parseFloat(ui.wind.value);ui.windOut.textContent=`M ${fmt(state.mach,2)} · ${fmt(state.mach*app.a0*3.6)} km/h`;fill(ui.wind);manual();});
   ui.alt.addEventListener('input',()=>{state.alt=parseFloat(ui.alt.value);ui.altOut.textContent=`${fmt(state.alt)} m`;fill(ui.alt);manual();});
+  ui.cross.addEventListener('input',()=>{state.cross=parseFloat(ui.cross.value);ui.crossOut.textContent=`${fmt(state.cross)} m/s`;fill(ui.cross);manual();});
+  ui.rev.addEventListener('click',()=>{state.reverser=!state.reverser;applyRev();manual();});
   ui.ts.addEventListener('input',()=>{state.tscale=parseFloat(ui.ts.value);ui.tsOut.textContent=`×${fmt(state.tscale,2)}`;fill(ui.ts);});
   ui.engBtn.addEventListener('click',()=>{app.dyn.toggle();engineButton();manual();});
   ui.fadec.addEventListener('change',e=>{state.fadec=e.target.checked;});
   ui.pause.addEventListener('click',()=>setPause(!state.paused));
-  $('#particles').value=state.particles;$('#particles').addEventListener('change',e=>{state.particles=e.target.value;setFlow(state.particles);});
+  $('#annBtn').addEventListener('click',()=>{state.ann=!state.ann;applyAnn();});
+  $('#soundBtn').addEventListener('click',()=>{state.sound=!state.sound;applySound();});
+  $('#particles').value=state.particles;$('#particles').addEventListener('change',e=>setParticles(e.target.value));
   $('#showFlow').checked=state.flow;$('#showFlow').addEventListener('change',e=>{state.flow=e.target.checked;app.flow.group.visible=state.flow;});
   $('#bloom').checked=state.bloom;$('#bloom').addEventListener('change',e=>{state.bloom=e.target.checked;});
   $('#tableBtn').addEventListener('click',e=>{app.tableOpen=!app.tableOpen;ui.chartTable.hidden=!app.tableOpen;e.target.setAttribute('aria-expanded',String(app.tableOpen));e.target.textContent=app.tableOpen?'Ocultar tabla':'Ver tabla';if(app.tableOpen)fillTable();});
@@ -168,6 +207,8 @@ export function initUI(){
     if(e.key===' '){e.preventDefault();setPause(!state.paused);}
     else if(e.key>='1'&&e.key<='4'){state.view=VIEW_KEYS[e.key-1];applyView();}
     else if(e.key==='c'||e.key==='C'){state.cut=CUT_KEYS[(CUT_KEYS.indexOf(state.cut)+1)%CUT_KEYS.length];applyCut();}
+    else if(e.key==='e'||e.key==='E'){state.ann=!state.ann;applyAnn();}
+    else if(e.key==='s'||e.key==='S'){state.sound=!state.sound;applySound();}
     else if(e.key==='Escape'&&app.tourI>=0)closeTour();
   });
 }

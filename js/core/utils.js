@@ -5,7 +5,7 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
 const DEG=Math.PI/180;
 const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
-const isMobile=matchMedia('(max-width:760px)').matches;
+const isMobile=typeof matchMedia==='function'&&matchMedia('(max-width:760px)').matches;   /* false outside a browser (tests) */
 
 /* temperature: non-linear map, 250 K → 0, 2400 K → 1 */
 const T_LO=250,T_HI=2400;

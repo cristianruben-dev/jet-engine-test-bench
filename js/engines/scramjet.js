@@ -33,7 +33,7 @@ function buildScramjet(){
   const bow=new THREE.Mesh(new THREE.PlaneGeometry(0.5,1.24).rotateY(Math.PI/2),shockMat());bow.rotation.z=-20*DEG;bow.position.set(-0.3,0.0,0);bow.renderOrder=4;E.group.add(bow);
   const place=(m,x0,y0,ang,len)=>{m.visible=len>0;if(len<=0)return;m.scale.x=len;m.rotation.z=ang;m.position.set(x0+Math.cos(ang)*len/2,y0+Math.sin(ang)*len/2,0);};
   E.hooks.push((R)=>{const M=R.M;const vis=M>1.3;const op=0.16*smooth(1.2,1.8,M);
-    const b1=shockAngle(M,5.2);if(!vis||b1===null){s1.visible=s2.visible=s3.visible=false;}else{
+    const b1=shockAngle(M,5.2);E.beta1=(vis&&b1!==null)?b1:null;if(!vis||b1===null){s1.visible=s2.visible=s3.visible=false;}else{
       const a1=-b1;const L1=Math.min(5,(0.45+0.3)/Math.sin(b1));place(s1,-2.6,0.45,a1,L1);s1.material.opacity=op;
       const M1=machAfter(M,b1,5.2);const b2=shockAngle(M1,10.5);
       if(b2===null){s2.visible=false;s3.visible=false;}else{const a2=-(b2+5.2*DEG);const L2=Math.min(4,(0.34+0.3)/Math.sin(-a2));place(s2,-1.4,0.34,a2,L2);s2.material.opacity=op;
@@ -50,11 +50,14 @@ function buildScramjet(){
     if(t>=0&&y>t-0.03){const gap=y-t,d=0.45;if(gap>d)return;const w=1-Math.max(gap,0)/d;const slope=(t0>=0&&t1>=0)?clamp((t1-t0)/la,-1.2,1.2):(t1>=0?1.4:-0.6)*Math.sign(la);let dv=(v[0]*slope-v[1])*w*w;if(gap<0.05)dv+=(0.05-gap)*6;v[1]+=dv;return;}
     const cw=-0.28;if(x>-0.3&&x<3.5&&y<cw&&y>cw-0.35){const w=1-(cw-y)/0.35;v[1]-=v[1]*w*w;if(cw-y<0.05)v[1]-=(0.05-(cw-y))*6;}};
   E.capture={x:-3.2,channel:true,yl:-0.5,yh:0.45,zh:0.58};
-  E.stream({name:'flow',kind:'channel',jet:3.3,pmap:[[-3.2,'amb'],[-2.6,'amb'],[-1.4,'ramp'],[0,'iso'],[1.2,'iso'],[2.6,'comb'],[5.2,'noz']],st:[[-3.2,-0.5,0.45,R=>R.V0,R=>R.T0,0.58],[-2.6,-0.5,0.45,R=>R.V0,R=>R.T0,0.58],[-1.4,-0.42,0.34,R=>R.V0*0.93,R=>R.T0*1.35,0.58],[0.0,-0.22,0.08,R=>R.V0*0.82,R=>R.T3,0.58],[1.2,-0.22,0.08,R=>R.V0*0.8,R=>R.T3,0.58],[2.6,-0.22,0.12,R=>R.V0*0.85,R=>R.T4s,0.58],[3.3,-0.24,0.3,R=>R.V0*0.95,R=>R.T4s,0.6],[5.2,-0.45,0.78,R=>Math.max(R.v9,R.V0),R=>R.T9,0.75],[8,-0.9,1.3,R=>Math.max(R.v9,R.V0)*0.9,R=>lerp(R.T9,R.T0,0.4),1.0]]});
+  /* captured air keeps its height until the nose shock reaches it (and is in the duct by the cowl lip) */
+  const shockW=(x,yf,R,E)=>{if(E.beta1==null)return 1;const xs=-2.6+(0.45-yf)/Math.tan(E.beta1);return Math.max(smooth(xs,xs+0.6,x),smooth(-0.8,-0.05,x));};
+  E.stream({name:'flow',kind:'channel',jet:3.3,shock:shockW,pmap:[[-3.2,'amb'],[-2.6,'amb'],[-1.4,'ramp'],[0,'iso'],[1.2,'iso'],[2.6,'comb'],[5.2,'noz']],st:[[-3.2,-0.5,0.45,R=>R.V0,R=>R.T0,0.58],[-2.6,-0.5,0.45,R=>R.V0,R=>R.T0,0.58],[-1.4,-0.42,0.34,R=>R.V0*0.93,R=>R.T0*1.35,0.58],[0.0,-0.22,0.08,R=>R.V0*0.82,R=>R.T3,0.58],[1.2,-0.22,0.08,R=>R.V0*0.8,R=>R.T3,0.58],[2.6,-0.22,0.12,R=>R.V0*0.85,R=>R.T4s,0.58],[3.3,-0.24,0.3,R=>R.V0*0.95,R=>R.T4s,0.6],[5.2,-0.45,0.78,R=>Math.max(R.v9,R.V0),R=>R.T9,0.75],[8,-0.9,1.3,R=>Math.max(R.v9,R.V0)*0.9,R=>lerp(R.T9,R.T0,0.4),1.0]]});
   E.spawn={x0:-7,x1:10,r:2.1,yc:0.1};
   E.table=[['Rampas y borde de ataque','ramp',0.35],['Aislador (estática)','iso',0.5],['Cámara (estática)','comb',0.5],['Chorro de salida','noz']];
   E.readouts=R=>[['Mach',fmt(R.M,1),''],['Velocidad',fmt(R.V0*3.6),'km/h'],['Empuje',fmt(R.F/1000,1),'kN'],['Flujo de aire',fmt(R.mdot,1),'kg/s'],['Hidrógeno',fmt(R.Wf,2),'kg/s'],['Consumo esp.',fmt(R.TSFC*1e6,1),'g/kN·s'],['Mach en cámara',fmt(R.M3,1),''],['Margen bloqueo',R.chokeMargin>=0?fmt(R.chokeMargin*100)+' %':'—',''],['Rend. propulsivo',fmt(R.etaP*100),'%'],['Rend. térmico',fmt(R.etaT*100),'%'],['Altitud',fmt(R.alt),'m'],['Partes móviles','0','']];
   E.hud=[[2,'Empuje'],[6,'M cámara'],[7,'Margen'],[5,'Consumo']];
+  E.stations=[['amb','0','Aire libre',-3.6,0.05,0.3],['ramp','1','Rampas',-1.6,0.12,0.3],['iso','3','Aislador',0.6,-0.07,0.3],['comb','4','Cámara',1.9,-0.05,0.3],['noz','9','Chorro',4.3,0.25,0.3]];
   E.cam={pos:[-2.6,2.0,8.4],target:[1.3,0.15,0]};
   E.tour=[
     {title:'Rampas de compresión',text:'El fuselaje es la toma: dos rampas generan choques oblicuos que comprimen el aire sin frenarlo por debajo de Mach 1. Al Mach de diseño los choques caen justo en el labio del carenado; a otro Mach se desvían y el motor traga de más o de menos.',cam:{pos:[-3.4,1.2,3.6],target:[-1.2,0.1,0]},part:'Rampas de compresión'},

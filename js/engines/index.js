@@ -16,6 +16,8 @@ const ENGINES={
       {name:'Arranque en frío',desc:'Corte y secuencia de arranque completa',run:a=>{a.set({throttle:0,mach:0,alt:0});a.stop();a.after(1500,()=>a.start());}},
       {name:'Corte en vuelo (molinete)',desc:'Apagado a M 0,7: los ejes siguen girando por el viento',run:a=>{a.set({throttle:0.6,mach:0.7,alt:6000});a.after(800,()=>a.cut());}},
       {name:'Acelerón sin limitador',desc:'FADEC desconectado: bombeo del compresor',run:a=>{a.start();a.set({throttle:0,mach:0.1,alt:0,fadec:false});a.after(3500,()=>a.set({throttle:1}));}},
+      {name:'Aterrizaje: inversor',desc:'Tocando pista a M 0,2 con el inversor desplegado',run:a=>{a.start();a.set({throttle:0.7,mach:0.2,alt:0,reverser:true,cut:'half'});}},
+      {name:'Viento cruzado en estático',desc:'20 m/s de lado y gas a fondo: vórtice de suelo y desprendimiento en el labio',run:a=>{a.start();a.set({throttle:1,mach:0,alt:0,cross:20,view:'mat'});}},
     ]},
   turbojet:{build:buildTurbojet,thermo:THERMO.turbojet,machMax:2.2,altMax:16000,defaults:{throttle:0.92,mach:0.4,alt:0,tscale:0.5,cut:'quarter'},
     blurb:'<b>Turborreactor de un eje con postquemador</b> (tipo J79). Todo el aire atraviesa compresor, cámaras tubulares y turbina. Por encima del 85 % de gas se inyecta combustible en el postquemador y la tobera de pétalos se abre.',

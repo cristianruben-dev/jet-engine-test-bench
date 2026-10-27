@@ -24,12 +24,13 @@ function buildRamjet(){
   const disc=new THREE.Mesh(ringX(-0.22,0.25,0.455,72),shockMat());disc.renderOrder=4;E.group.add(disc);
   E.hooks.push((R)=>{const b=shockAngle(R.M,10);const vis=R.M>1.02&&b!==null;cone.visible=vis;disc.visible=R.M>1.02;if(vis){const h=1.15,r=h*Math.tan(b);cone.scale.set(h,r,r);cone.position.set(-1.1+h/2,0,0);cone.material.opacity=0.11*smooth(1.0,1.4,R.M);}disc.material.opacity=0.16*smooth(1.0,1.3,R.M);});
   annularBody(E,[[-1.1,0],[-0.35,0.47],[0.3,0.52],[3.4,0.52],[4.3,0.42],[4.31,0]]);
-  E.capture={x:-0.35,r:0.455};
+  E.capture={x:-0.35,r:0.455};E.shock={x0:-1.1,theta:10,tanCone:0.325};   /* the air turns at the conical shock of the spike */
   E.stream({name:'flow',jet:4.3,pmap:[[-0.35,'in'],[1.4,'diff'],[1.7,'comb'],[3.3,'comb'],[4.3,'noz']],st:[[-0.35,0.245,0.455,R=>R.V0,R=>R.Tt0*0.9],[0.2,0.3,0.46,R=>R.V0*0.35,R=>R.Tt0*0.95],[1.4,0.08,0.48,R=>R.V0*0.3,R=>R.Tt0],[1.7,0.0,0.48,R=>R.V0*0.3+60*R.burn,R=>lerp(R.Tt0,R.Tt4,0.5)],[3.3,0.0,0.48,R=>R.V0*0.45+100*R.burn,R=>R.Tt4],[3.7,0,0.33,R=>R.V0*0.9+200*R.burn,R=>R.Tt4*0.85],[4.3,0,0.4,R=>Math.max(R.v9,R.V0*0.6),R=>R.T9],[7.5,0,0.6,R=>Math.max(R.v9,R.V0*0.6)*0.7+R.V0*0.3,R=>lerp(R.T9,R.T0,0.5)],[10,0,0.8,R=>Math.max(R.v9,R.V0*0.6)*0.4+R.V0*0.6,R=>lerp(R.T9,R.T0,0.8)]]});
   E.spawn={x0:-6,x1:9,r:2.3};
   E.table=[['Cono y toma (remanso)','in'],['Difusor','diff'],['Cámara de combustión','comb',0.35],['Chorro de salida','noz']];
   E.readouts=R=>[['Mach',fmt(R.M,2),''],['Velocidad',fmt(R.V0*3.6),'km/h'],['Empuje',fmt(R.F/1000,1),'kN'],['Flujo de aire',fmt(R.mdot),'kg/s'],['Combustible',fmt(R.Wf,2),'kg/s'],['Consumo esp.',fmt(R.TSFC*1e6,1),'g/kN·s'],['Rel. presiones',fmt(R.OPR,1),':1'],['Chorro',fmt(R.v9),'m/s'],['Rend. propulsivo',fmt(R.etaP*100),'%'],['Rend. térmico',fmt(R.etaT*100),'%'],['Altitud',fmt(R.alt),'m'],['Partes móviles','0','']];
   E.hud=[[2,'Empuje'],[6,'Presión'],[7,'Chorro'],[5,'Consumo']];
+  E.stations=[['amb','0','Aire libre',-2.1,0.35],['in','1','Cono y toma',-0.3,0.42],['diff','2','Difusor',0.8,0.32],['comb','4','Cámara',2.5,0.36],['noz','9','Chorro',4.9,0.3]];
   E.cam={pos:[-3.4,1.8,5.9],target:[1.6,0,0]};
   E.tour=[
     {title:'Cono de entrada',text:'A velocidad supersónica el cono genera un choque oblicuo que comprime el aire antes de que entre. El ángulo del cono fija el Mach de diseño: el choque debe tocar justo el labio. Mueve la velocidad y mira cómo se abre o se cierra.',cam:{pos:[-3.2,1.0,2.4],target:[-0.6,0,0]},part:'Cono central'},
