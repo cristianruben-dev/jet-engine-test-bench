@@ -24,7 +24,14 @@
       </nav>
       <p id="blurb"></p>
     </header>
-    <p id="hint">Arrastra para orbitar · rueda para acercar · pasa el ratón por una pieza para ver qué es y a qué temperatura está</p>
+    <div id="corner">
+      <div id="tour" hidden>
+        <b id="tourTitle"></b>
+        <p id="tourText"></p>
+        <div class="nav"><button id="tourPrev" class="btn ghost small">◀ Anterior</button><span id="tourN"></span><button id="tourNext" class="btn small">Siguiente ▶</button><button id="tourClose" class="btn ghost small" aria-label="Cerrar guía">✕</button></div>
+      </div>
+      <p id="hint">Arrastra para orbitar · rueda para acercar · pasa el ratón por una pieza para ver qué es, su temperatura, presión y velocidad</p>
+    </div>
     <aside id="panel" aria-label="Controles e instrumentos">
       <button id="panelToggle" aria-expanded="true">▾ Instrumentos</button>
       <section class="ctrl">
@@ -37,35 +44,82 @@
           <input type="range" id="wind" min="0" max="0.95" step="0.01" value="0.15">
         </div>
         <div>
-          <label for="tscale">Cámara lenta <output id="tsOut">×0,50</output></label>
-          <input type="range" id="tscale" min="0.05" max="1" step="0.01" value="0.5">
+          <label for="alt">Altitud <output id="altOut">0 m</output></label>
+          <input type="range" id="alt" min="0" max="14000" step="250" value="0">
+        </div>
+        <div class="row">
+          <button id="engBtn" class="btn">Cortar combustible</button>
+          <label class="chk" title="Limitador de aceleración: dosifica el combustible para no cruzar la línea de bombeo"><input type="checkbox" id="fadec" checked> Limitador FADEC</label>
         </div>
       </section>
       <section class="toggles">
         <div class="seg" id="viewMode" role="group" aria-label="Vista">
           <button data-v="mat" aria-pressed="true">Materiales</button>
           <button data-v="thermal" aria-pressed="false">Térmica</button>
+          <button data-v="pressure" aria-pressed="false">Presión</button>
+          <button data-v="velocity" aria-pressed="false">Velocidad</button>
+        </div>
+        <div class="seg small" id="thermalMode" role="group" aria-label="Temperatura mostrada" hidden>
+          <button data-m="gas" aria-pressed="false">Gas</button>
+          <button data-m="metal" aria-pressed="true">Metal (refrigerado)</button>
         </div>
         <div class="seg" id="cutMode" role="group" aria-label="Corte">
           <button data-c="none" aria-pressed="false">Completo</button>
           <button data-c="quarter" aria-pressed="true">Corte ¼</button>
           <button data-c="half" aria-pressed="false">Corte ½</button>
         </div>
+        <div class="seg" id="camMode" role="group" aria-label="Cámara">
+          <button data-cam="cut">Vista corte</button>
+          <button data-cam="front">Frontal</button>
+          <button data-cam="side">Lateral</button>
+          <button data-cam="jet">Chorro</button>
+        </div>
         <div class="chkrow">
           <label class="chk"><input type="checkbox" id="showFlow" checked> Flujo de aire</label>
           <label class="chk"><input type="checkbox" id="bloom" checked> Resplandor</label>
+          <button id="pauseBtn" class="btn ghost small" aria-pressed="false">⏸ Pausa</button>
+        </div>
+        <div class="row">
+          <label class="sel">Partículas
+            <select id="particles"><option value="low">pocas</option><option value="medium" selected>normal</option><option value="high">muchas</option></select>
+          </label>
+          <div class="grow">
+            <label for="tscale">Cámara lenta <output id="tsOut">×0,50</output></label>
+            <input type="range" id="tscale" min="0.05" max="1" step="0.01" value="0.5">
+          </div>
         </div>
       </section>
       <div id="status"><span class="dot"></span><span id="statusText"></span></div>
+      <div id="warnings" aria-live="polite"></div>
       <section>
         <h2>Instrumentos</h2>
         <div class="readouts" id="readouts"></div>
       </section>
       <section>
-        <h2>Temperatura por componente</h2>
+        <h2>Temperatura por componente <small>gas · metal refrigerado</small></h2>
         <div id="temps"></div>
       </section>
-      <div id="legend"><div class="bar"></div><div class="ticks"></div></div>
+      <section>
+        <h2>Gráficas</h2>
+        <div class="seg small" id="chartMode" role="group" aria-label="Gráfica">
+          <button data-ch="compare" aria-pressed="true">Los cuatro frente a Mach</button>
+          <button data-ch="cycle" aria-pressed="false">Ciclo T‑s</button>
+        </div>
+        <div id="chartWrap"><canvas id="chart" aria-label="Gráfica"></canvas><div id="chartTip" hidden></div></div>
+        <div id="chartLegend"></div>
+        <p id="chartNote"></p>
+        <button id="tableBtn" class="btn ghost small" aria-expanded="false">Ver tabla</button>
+        <div id="chartTable" hidden></div>
+      </section>
+      <section>
+        <h2>Escenarios</h2>
+        <div id="presets"></div>
+      </section>
+      <section>
+        <h2>Guía</h2>
+        <button id="tourBtn" class="btn">Recorrer el motor estación por estación</button>
+      </section>
+      <div id="legend"><div class="lbl"></div><div class="bar"></div><div class="ticks"></div></div>
     </aside>
     <div id="tip" hidden></div>
   </div>
