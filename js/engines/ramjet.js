@@ -29,6 +29,7 @@ function buildRamjet(){
   E.spawn={x0:-6,x1:9,r:2.3};
   E.table=[['Cono y toma (remanso)','in'],['Difusor','diff'],['Cámara de combustión','comb',0.35],['Chorro de salida','noz']];
   E.readouts=R=>[['Mach',fmt(R.M,2),''],['Velocidad',fmt(R.V0*3.6),'km/h'],['Empuje',fmt(R.F/1000,1),'kN'],['Flujo de aire',fmt(R.mdot),'kg/s'],['Combustible',fmt(R.Wf,2),'kg/s'],['Consumo esp.',fmt(R.TSFC*1e6,1),'g/kN·s'],['Rel. presiones',fmt(R.OPR,1),':1'],['Chorro',fmt(R.v9),'m/s'],['Rend. propulsivo',fmt(R.etaP*100),'%'],['Rend. térmico',fmt(R.etaT*100),'%'],['Altitud',fmt(R.alt),'m'],['Partes móviles','0','']];
+  E.hud=[[2,'Empuje'],[6,'Presión'],[7,'Chorro'],[5,'Consumo']];
   E.cam={pos:[-3.4,1.8,5.9],target:[1.6,0,0]};
   E.tour=[
     {title:'Cono de entrada',text:'A velocidad supersónica el cono genera un choque oblicuo que comprime el aire antes de que entre. El ángulo del cono fija el Mach de diseño: el choque debe tocar justo el labio. Mueve la velocidad y mira cómo se abre o se cierra.',cam:{pos:[-3.2,1.0,2.4],target:[-0.6,0,0]},part:'Cono central'},

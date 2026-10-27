@@ -48,6 +48,7 @@ function buildScramjet(){
   E.spawn={x0:-7,x1:10,r:2.1,yc:0.1};
   E.table=[['Rampas y borde de ataque','ramp',0.35],['Aislador (estática)','iso',0.5],['Cámara (estática)','comb',0.5],['Chorro de salida','noz']];
   E.readouts=R=>[['Mach',fmt(R.M,1),''],['Velocidad',fmt(R.V0*3.6),'km/h'],['Empuje',fmt(R.F/1000,1),'kN'],['Flujo de aire',fmt(R.mdot,1),'kg/s'],['Hidrógeno',fmt(R.Wf,2),'kg/s'],['Consumo esp.',fmt(R.TSFC*1e6,1),'g/kN·s'],['Mach en cámara',fmt(R.M3,1),''],['Margen bloqueo',R.chokeMargin>=0?fmt(R.chokeMargin*100)+' %':'—',''],['Rend. propulsivo',fmt(R.etaP*100),'%'],['Rend. térmico',fmt(R.etaT*100),'%'],['Altitud',fmt(R.alt),'m'],['Partes móviles','0','']];
+  E.hud=[[2,'Empuje'],[6,'M cámara'],[7,'Margen'],[5,'Consumo']];
   E.cam={pos:[-2.6,2.0,8.4],target:[1.3,0.15,0]};
   E.tour=[
     {title:'Rampas de compresión',text:'El fuselaje es la toma: dos rampas generan choques oblicuos que comprimen el aire sin frenarlo por debajo de Mach 1. Al Mach de diseño los choques caen justo en el labio del carenado; a otro Mach se desvían y el motor traga de más o de menos.',cam:{pos:[-3.4,1.2,3.6],target:[-1.2,0.1,0]},part:'Rampas de compresión'},

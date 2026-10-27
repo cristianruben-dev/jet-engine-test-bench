@@ -34,10 +34,10 @@ const ENGINES={
       {name:'Límite M 5,5',desc:'Aire de entrada demasiado caliente',run:a=>{a.start();a.set({throttle:1,mach:5.5,alt:22000});}},
       {name:'Corte de combustible',desc:'Solo pasa aire',run:a=>{a.set({throttle:0.8,mach:3,alt:15000});a.cut();}},
     ]},
-  scramjet:{build:buildScramjet,thermo:THERMO.scramjet,machMax:10,altMax:32000,defaults:{throttle:0.7,mach:7,alt:30000,tscale:0.14,cut:'quarter'},
+  scramjet:{build:buildScramjet,thermo:THERMO.scramjet,machMax:10,altMax:32000,defaults:{throttle:0.6,mach:7,alt:30000,tscale:0.14,cut:'quarter'},
     blurb:'<b>Scramjet</b> (X-43 / X-51): la combustión ocurre con el flujo todavía supersónico. Las rampas del fuselaje comprimen el aire mediante choques oblicuos; sin partes móviles. Solo funciona a partir de M ≈ 5.',
     presets:[
-      {name:'X-43 a M 7',desc:'Punto de diseño',run:a=>{a.start();a.set({throttle:0.7,mach:7,alt:30000});}},
+      {name:'X-43 a M 7',desc:'Punto de diseño',run:a=>{a.start();a.set({throttle:0.6,mach:7,alt:30000});}},
       {name:'Límite inferior M 4,8',desc:'La llama apenas se sostiene',run:a=>{a.start();a.set({throttle:0.5,mach:4.8,alt:27000});}},
       {name:'Bloqueo térmico (unstart)',desc:'Demasiado combustible a M 5',run:a=>{a.start();a.set({throttle:0.3,mach:5.2,alt:28000});a.after(2500,()=>a.set({throttle:1}));}},
       {name:'Récord M 9,6',desc:'Rampas al rojo blanco',run:a=>{a.start();a.set({throttle:0.8,mach:9.6,alt:32000});}},

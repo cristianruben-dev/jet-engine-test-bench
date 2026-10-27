@@ -35,8 +35,9 @@ composer.addPass(new RenderPass(scene,camera));
 const bloom=new UnrealBloomPass(new THREE.Vector2(1,1),0.45,0.3,1.45);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
-function resize(){const w=canvas.clientWidth||1,h=canvas.clientHeight||1;renderer.setSize(w,h,false);composer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
-new ResizeObserver(resize).observe($('#app'));resize();
+/* portrait canvases (phone with the sheet open) widen the field of view so the engine still fits */
+function resize(){const w=canvas.clientWidth||1,h=canvas.clientHeight||1;renderer.setSize(w,h,false);composer.setSize(w,h);camera.aspect=w/h;camera.zoom=camera.aspect<1?Math.max(0.68,0.5+0.5*camera.aspect):1;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(canvas);resize();
 
 /* smooth camera flights (presets and the guided tour) */
 const flight={active:false,t:0,dur:1,p0:new THREE.Vector3(),p1:new THREE.Vector3(),t0:new THREE.Vector3(),t1:new THREE.Vector3()};

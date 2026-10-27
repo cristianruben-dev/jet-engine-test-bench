@@ -24,7 +24,7 @@ function axes(g,x0,y0,x1,y1,xt,yt,col,xfmt,yfmt){
   g.strokeStyle=col.muted;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y0);g.stroke();
 }
 function panel(g,col,x0,y0,x1,y1,title,data,key,ymax,current,hoverM){
-  g.fillStyle=col.fg;g.font='600 11px "Rajdhani", "IBM Plex Sans", sans-serif';g.textAlign='left';g.textBaseline='bottom';g.fillText(title,x0,y1-4);
+  g.fillStyle=col.fg;g.font='600 11.5px "Rajdhani", "IBM Plex Sans", sans-serif';g.textAlign='left';g.textBaseline='bottom';g.fillText(title,x0,y1-6);
   g.font='10.5px "IBM Plex Mono", ui-monospace, monospace';
   const yt=[];for(let v=0;v<=ymax;v+=ymax/4)yt.push([v,v/ymax]);const xt=[];for(let m=0;m<=10;m+=2)xt.push([m,m/10]);
   axes(g,x0,y0,x1,y1,xt,yt,col,v=>'M '+v,v=>fmt(v));
@@ -39,8 +39,8 @@ function panel(g,col,x0,y0,x1,y1,title,data,key,ymax,current,hoverM){
 /* specific thrust and specific fuel consumption of the four engines; `current` marks the live operating point */
 function drawComparison(canvas,alt,current,hoverM){
   const {g,w,h}=prep(canvas),col=ink(),data=sweep(alt);const x0=40,x1=w-8,mid=h/2;
-  panel(g,col,x0,mid-22,x1,12,'Empuje específico (N·s/kg)',data,'Fsp',1200,current&&{id:current.id,M:current.M,v:current.Fsp},hoverM);
-  panel(g,col,x0,h-18,x1,mid+6,'Consumo específico (g/kN·s)',data,'TSFC',120,current&&{id:current.id,M:current.M,v:current.TSFC},hoverM);
+  panel(g,col,x0,mid-26,x1,20,'Empuje específico (N·s/kg)',data,'Fsp',1200,current&&{id:current.id,M:current.M,v:current.Fsp},hoverM);
+  panel(g,col,x0,h-18,x1,mid+16,'Consumo específico (g/kN·s)',data,'TSFC',120,current&&{id:current.id,M:current.M,v:current.TSFC},hoverM);
   return data;
 }
 /* values of every engine at one Mach, for the hover tooltip and the table twin */
@@ -48,7 +48,7 @@ function valuesAt(data,M){const out=[];for(const id in data){const pts=data[id];
 
 /* T-s diagram of the current engine: total conditions at each station, entropy relative to ambient */
 function drawCycle(canvas,R,id){
-  const {g,w,h}=prep(canvas),col=ink();const x0=44,x1=w-10,y0=h-20,y1=14;
+  const {g,w,h}=prep(canvas),col=ink();const x0=44,x1=w-10,y0=h-20,y1=16;
   const cp=1080;const pts=R.cycle.map(([n,k])=>{const s=R.st[k];return {n,T:s.T,s:(cp*Math.log(s.T/R.T0)-RG*Math.log(s.P/R.P0))/1000};});
   const sMax=Math.max(0.3,...pts.map(p=>p.s))*1.12,sMin=Math.min(0,...pts.map(p=>p.s))-0.05,tMax=Math.max(...pts.map(p=>p.T))*1.1;
   const px=s=>x0+(x1-x0)*(s-sMin)/(sMax-sMin),py=T=>y0-(y0-y1)*T/tMax;

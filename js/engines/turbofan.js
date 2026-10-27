@@ -80,6 +80,7 @@ function buildTurbofan(){
   E.spawn={x0:-6,x1:9,r:2.4};
   E.table=[['Toma de aire','in'],['Fan','fan'],['Compresor de baja','lpc'],['Compresor de alta','hpc'],['Cámara de combustión (TIT)','comb',0.45],['Turbina de alta','hpt',0.45],['Turbina de baja (EGT)','lpt',0.12],['Chorro del núcleo','noz'],['Chorro de derivación','byp']];
   E.readouts=R=>[['N1 (fan)',fmt(R.rpm.N1),'rpm'],['N2 (núcleo)',fmt(R.rpm.N2),'rpm'],['Empuje',fmt(R.F/1000),'kN'],['Flujo de aire',fmt(R.mdot),'kg/s'],['Combustible',fmt(R.Wf,2),'kg/s'],['Consumo esp.',fmt(R.TSFC*1e6,1),'g/kN·s'],['Rel. presiones',fmt(R.OPR,1),':1'],['EGT',fmt(R.Tt5-273.15),'°C'],['Rend. propulsivo',fmt(R.etaP*100),'%'],['Rend. térmico',fmt(R.etaT*100),'%'],['Chorro núcleo',fmt(R.v9),'m/s'],['Chorro bypass',fmt(R.v19),'m/s']];
+  E.hud=[[0,'N1'],[1,'N2'],[2,'Empuje'],[7,'EGT']];
   E.cam={pos:[-4.4,2.5,6.6],target:[1.7,0,0]};
   E.tour=[
     {title:'Toma de aire',text:'El labio redondeado de la góndola acelera el aire sin desprendimientos. Parado y a plena potencia, el fan aspira aire incluso desde detrás del labio: ponte frente al motor con viento cero y mira las estelas.',cam:{pos:[-3.6,1.3,2.8],target:[0,0,0]},part:'Góndola'},

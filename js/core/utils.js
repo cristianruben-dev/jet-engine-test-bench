@@ -29,10 +29,10 @@ function cssGradient(lut){const s=[];for(let k=0;k<=16;k++){const i=Math.round(k
 
 /* what each view paints: palette, scale and legend ticks */
 const VIEWS={
-  mat:{lut:'flow',lin:'flowLin',frac:g=>tFrac(g.T),ticks:[[0,'0 °C'],[300,'300'],[700,'700'],[1200,'1200'],[1800,'1800 °C']].map(([c,l])=>[tFrac(c+273.15),l]),label:'Temperatura del aire'},
-  thermal:{lut:'iron',lin:'ironLin',frac:g=>tFrac(g.T),ticks:[[0,'0 °C'],[300,'300'],[700,'700'],[1200,'1200'],[1800,'1800 °C']].map(([c,l])=>[tFrac(c+273.15),l]),label:'Temperatura'},
-  pressure:{lut:'press',lin:'pressLin',frac:g=>pFrac(g.Pr),ticks:[[0.5,'0,5×'],[1,'1×'],[3,'3×'],[10,'10×'],[30,'30×']].map(([p,l])=>[pFrac(p),l]),label:'Presión (veces la ambiente)'},
-  velocity:{lut:'vel',lin:'velLin',frac:g=>vFrac(g.V),ticks:[[0,'0'],[150,'150'],[500,'500'],[1200,'1200'],[2500,'2500 m/s']].map(([v,l])=>[vFrac(v),l]),label:'Velocidad del gas'},
+  mat:{lut:'flow',lin:'flowLin',frac:g=>tFrac(g.T),ticks:[[0,'0 °C'],[300,'300'],[700,'700'],[1200,'1200'],[1800,'1800']].map(([c,l])=>[tFrac(c+273.15),l]),label:'Temperatura del aire',short:'Temp. del aire'},
+  thermal:{lut:'iron',lin:'ironLin',frac:g=>tFrac(g.T),ticks:[[0,'0 °C'],[300,'300'],[700,'700'],[1200,'1200'],[1800,'1800']].map(([c,l])=>[tFrac(c+273.15),l]),label:'Temperatura',short:'Temp.'},
+  pressure:{lut:'press',lin:'pressLin',frac:g=>pFrac(g.Pr),ticks:[[0.5,'0,5×'],[1,'1×'],[3,'3×'],[10,'10×'],[30,'30×']].map(([p,l])=>[pFrac(p),l]),label:'Presión (veces la ambiente)',short:'Presión × ambiente'},
+  velocity:{lut:'vel',lin:'velLin',frac:g=>vFrac(g.V),ticks:[[0,'0'],[150,'150'],[500,'500'],[1200,'1200'],[2500,'2500 m/s']].map(([v,l])=>[vFrac(v),l]),label:'Velocidad del gas',short:'Velocidad del gas'},
 };
 
 export {$,clamp,lerp,smooth,DEG,fmt,isMobile,T_LO,T_HI,tFrac,pFrac,vFrac,IRONBOW,FLOW,buildLUT,LUT,fIdx,tIdx,cssLUT,cssTemp,cssGradient,VIEWS};

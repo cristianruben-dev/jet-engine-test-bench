@@ -51,6 +51,7 @@ function buildTurbojet(){
   E.spawn={x0:-6,x1:9,r:2.3};
   E.table=[['Toma de aire','in'],['Compresor (salida)','comp'],['Cámara de combustión (TIT)','comb',0.4],['Turbina (EGT)','turb',0.35],['Postquemador','ab',0.5],['Chorro de salida','noz']];
   E.readouts=R=>[['Régimen',fmt(R.rpm.N),'rpm'],['Empuje',fmt(R.F/1000,1),'kN'],['Flujo de aire',fmt(R.mdot),'kg/s'],['Combustible',fmt(R.Wf,2),'kg/s'],['Consumo esp.',fmt(R.TSFC*1e6,1),'g/kN·s'],['Rel. presiones',fmt(R.OPR,1),':1'],['EGT',fmt(R.Tt5-273.15),'°C'],['Postquemador',R.ab>0.01?fmt(R.ab*100)+' %':'apagado',''],['Rend. propulsivo',fmt(R.etaP*100),'%'],['Rend. térmico',fmt(R.etaT*100),'%'],['Chorro',fmt(R.v9),'m/s'],['Velocidad',fmt(R.V0*3.6),'km/h']];
+  E.hud=[[0,'Régimen'],[1,'Empuje'],[6,'EGT'],[7,'Postquem.']];
   E.cam={pos:[-3.2,1.9,5.8],target:[1.9,0,0]};
   E.tour=[
     {title:'Toma y álabes guía',text:'Sin fan ni derivación: todo el aire entra al compresor. Los álabes guía de entrada pivotan con el régimen para que el primer rotor reciba el aire con el ángulo correcto.',cam:{pos:[-2.6,1.1,2.2],target:[0,0,0]},part:'Álabes guía de entrada variables'},

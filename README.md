@@ -12,13 +12,19 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 then open <http://localhost:8765/>. Three.js and its addons load from jsDelivr.
 
+## Interface
+
+Full-bleed 3D scene. Top left: title, engine tabs and the engine description (replaced by the guided-tour card while a tour runs). Bottom centre, floating over the scene: the colour scale of the active view and the view toolbar (paint mode, gas/metal, cutaway, camera presets, pause). Right: the instrument panel, with a fixed head (throttle, airspeed, altitude, start/cut button, FADEC limiter, status line, warnings and four key instruments per engine) and a tabbed body: Instrumentos, Gráficas, Escenarios, Ajustes. On phones the panel becomes a bottom sheet and the canvas sits above it; the sheet collapses to the status line and the key instruments.
+
+Keyboard: `Space` pause, `1`–`4` paint modes, `C` cycles the cutaway, `Esc` closes the tour, `←`/`→` move between tabs.
+
 ## Layout
 
 ```
 index.html               Page markup only (no styles, no logic)
-css/styles.css           Stylesheet (tokens, panel, charts, tour, phone layout)
+css/styles.css           Stylesheet (tokens, stage overlays, toolbar, panel, charts, tour, phone sheet)
 js/main.js               Entry point and simulation loop (dynamics → cycle → paint → flow)
-js/ui.js                 Panel, tabs, start/stop, views, instruments, charts, scenarios, tour, tooltip
+js/ui.js                 Tabs, sliders, start/stop, toolbar, legend, panel head and panes, charts, scenarios, tour, tooltip
 js/state.js              Global state, time-scale constants, particle budgets
 js/fallback.js           Warning when the CDN does not respond
 js/core/utils.js         Numeric helpers, formatting and the palette of every view
