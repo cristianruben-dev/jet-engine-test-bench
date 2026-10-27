@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Banco de Motores a Reacción</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="view" tabindex="0" aria-label="Vista 3D del motor"></canvas>
+  <div id="ui">
+    <header id="top">
+      <h1><small>Banco de pruebas · simulación</small>Motores a Reacción</h1>
+      <nav id="tabs" role="tablist" aria-label="Tipo de motor">
+        <button role="tab" data-engine="turbofan" aria-selected="true">Turbofan</button>
+        <button role="tab" data-engine="turbojet" aria-selected="false">Turborreactor</button>
+        <button role="tab" data-engine="ramjet" aria-selected="false">Estatorreactor</button>
+        <button role="tab" data-engine="scramjet" aria-selected="false">Scramjet</button>
+      </nav>
+      <p id="blurb"></p>
+    </header>
+    <p id="hint">Arrastra para orbitar · rueda para acercar · pasa el ratón por una pieza para ver qué es y a qué temperatura está</p>
+    <aside id="panel" aria-label="Controles e instrumentos">
+      <button id="panelToggle" aria-expanded="true">▾ Instrumentos</button>
+      <section class="ctrl">
+        <div>
+          <label for="throttle">Acelerador (gas) <output id="thrOut">75 %</output></label>
+          <input type="range" id="throttle" min="0" max="100" step="1" value="75">
+        </div>
+        <div>
+          <label for="wind">Velocidad del aire <output id="windOut">M 0,15</output></label>
+          <input type="range" id="wind" min="0" max="0.95" step="0.01" value="0.15">
+        </div>
+        <div>
+          <label for="tscale">Cámara lenta <output id="tsOut">×0,50</output></label>
+          <input type="range" id="tscale" min="0.05" max="1" step="0.01" value="0.5">
+        </div>
+      </section>
+      <section class="toggles">
+        <div class="seg" id="viewMode" role="group" aria-label="Vista">
+          <button data-v="mat" aria-pressed="true">Materiales</button>
+          <button data-v="thermal" aria-pressed="false">Térmica</button>
+        </div>
+        <div class="seg" id="cutMode" role="group" aria-label="Corte">
+          <button data-c="none" aria-pressed="false">Completo</button>
+          <button data-c="quarter" aria-pressed="true">Corte ¼</button>
+          <button data-c="half" aria-pressed="false">Corte ½</button>
+        </div>
+        <div class="chkrow">
+          <label class="chk"><input type="checkbox" id="showFlow" checked> Flujo de aire</label>
+          <label class="chk"><input type="checkbox" id="bloom" checked> Resplandor</label>
+        </div>
+      </section>
+      <div id="status"><span class="dot"></span><span id="statusText"></span></div>
+      <section>
+        <h2>Instrumentos</h2>
+        <div class="readouts" id="readouts"></div>
+      </section>
+      <section>
+        <h2>Temperatura por componente</h2>
+        <div id="temps"></div>
+      </section>
+      <div id="legend"><div class="bar"></div><div class="ticks"></div></div>
+    </aside>
+    <div id="tip" hidden></div>
+  </div>
+  <div id="loading">Cargando banco de pruebas…</div>
+</div>
+<script type="module" src="js/main.js"></script>
+<script src="js/fallback.js"></script>
+</body>
+</html>
